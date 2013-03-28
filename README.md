@@ -1,3 +1,5 @@
+**Under construction. It doesn't work. But it's coming along.**
+
 HabitRPG Todo Synchronization
 =============================
 
