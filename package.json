@@ -1,0 +1,28 @@
+{
+  "name": "habitrpg-todo-sync",
+  "version": "0.0.1",
+  "description": "Two-way sync between task managers (e.g. Remember the Milk) and HabitRPG",
+  "main": "main.js",
+  "dependencies": {
+    "inireader": "~0.3.1",
+    "prompt": "~0.2.9"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": "",
+  "keywords": [
+    "habitrpg",
+    "rtm",
+    "remember",
+    "the",
+    "milk",
+    "rememberthemilk",
+    "sync",
+    "todo",
+    "task"
+  ],
+  "author": "Kevin Kaland",
+  "license": "GPLv3"
+}
