@@ -5,7 +5,10 @@
   "main": "main.js",
   "dependencies": {
     "inireader": "~0.3.1",
-    "prompt": "~0.2.9"
+    "prompt": "~0.2.9",
+    "underscore": "~1.4.4",
+    "superagent": "~0.13.0",
+    "MD5": "~1.0.3"
   },
   "devDependencies": {},
   "scripts": {
