@@ -12,6 +12,7 @@ var parser = new iniReader.IniReader(),
   prompt = require('prompt'),
   request = require('superagent'),
   url = require('url'),
+  util = require('util'),
   _ = require('underscore');
 
 var hrpgConfigPath = path.resolve(path.join(process.env.HOME, '.habitrpgrc'));
@@ -21,7 +22,10 @@ var betaServer = process.env.BETA_MODE == "1" ? true : false;
 var mode = debugMode ? "debug" : "production";
 
 var requestStuff = {
-  host: debugMode ? 'localhost:3000' : betaServer ? 'beta.habitrpg.com' : 'habitrpg.com'
+  host: debugMode ? 'localhost' : betaServer ? 'beta.habitrpg.com' : 'habitrpg.com',
+  port: debugMode ? 3000 : 443,
+  protocol: debugMode ? 'http' : 'https',
+  path: "/api/v1/user/tasks"
 };
 
 if (process.env.FORCE === undefined) {
@@ -34,7 +38,11 @@ if (process.env.FORCE === undefined) {
     }
   ];
 
-  console.log("You are about to synchronize tasks between HabitRPG and Remember the Milk.\n\nMode: " + mode + "\nServer: " + requestStuff.host + "\n\nIf this is OK with you, type the word yes in full");
+  console.log("You are about to synchronize tasks between HabitRPG and Remember the Milk.\n\nMode: " + mode + "\n" +
+              "Server: " + requestStuff.host + "\n" +
+              "Port: " + requestStuff.port + "\n\n" +
+
+              "If this is OK with you, type the word yes in full");
   prompt.get(properties, function(err, result) {
     if (err) { return onErr(err); }
 
@@ -50,86 +58,111 @@ else {
 function startSync() {
   console.log('Now syncing with ' + requestStuff.host + '...');
 
+  var hrpgAuth = {};
   if (fs.existsSync(hrpgConfigPath)) {
-    ////// START HABIT //////
-    parser.load(hrpgConfigPath);
+    // TODO: If we set HRPG_USER_ID and HRPG_API_TOKEN in the environment, skip
+    // the INI parsing. Useful for dev mode or multiple accounts.
+    if (process.env.HRPG_USER_ID && process.env.HRPG_API_TOKEN) {
+      console.log("Using HabitRPG credentials from the environment instead of reading ~/.habitrpgrc.");
+      hrpgAuth = {
+        user_id: process.env.HRPG_USER_ID,
+        api_token: process.env.HRPG_API_TOKEN
+      };
+    }
+    else {
+      ////// START HABIT //////
+      parser.load(hrpgConfigPath);
 
-    var hrpgAuth = {
-      user_id: parser.param('auth.user_id'),
-      api_token: parser.param('auth.api_token')
-    };
+      hrpgAuth = {
+        user_id: parser.param('auth.user_id'),
+        api_token: parser.param('auth.api_token')
+      };
+    }
 
-    var options = {
+    // TODO: Remove me soon
+    /* var options = {
       hostname: requestStuff.host,
-      port: 443,
-      path: '/api/v1/user/tasks?type=todo',
+      port: requestStuff.port,
+      path: '/api/v1/user/tasks',
       headers: {
         'Content-Type': 'application/json',
         'Accept-Encoding': 'gzip, deflate',
         'x-api-user': hrpgAuth.user_id,
         'x-api-key': hrpgAuth.api_token
       }
-    };
+    }; */
+    habitRequestPath = requestStuff.protocol + '://' + requestStuff.host + ':' + requestStuff.port + requestStuff.path;
+    console.log("HabitRPG request path: " + habitRequestPath);
 
-    console.log(JSON.stringify(options));
+    request.get(habitRequestPath)
+      .query({type: 'todo'})
+      .type('application/json')
+      .set('Accept: gzip, deflate')
+      .set('x-api-user', hrpgAuth.user_id)
+      .set('x-api-key', hrpgAuth.api_token)
+      .end(function(res) {
+        if (res.ok) {
+          res.text = JSON.parse(res.text);
 
-    // TODO: Use request() instead
-    https.get(options, function(res) {
-      var gunzip = gunzipJSON(res);
+          console.log("Got response: " + res.status);
 
-      console.log("Got response: " + res.statusCode);
+          console.log("BODY: " + util.inspect(res.text));
 
-      gunzip.on("data", function(chunk) {
-        console.log("BODY: " + JSON.stringify(JSON.parse(chunk), null, 2));
-      });
+          console.log('Finished getting HabitRPG tasks.');
+          console.log("Let's grab the Remember the Milk tasks now. We'll restrict it to those created within the last week for now. First, we have to make sure we're authenticated...");
+          // TODO: This is where I would continue with getting RTM tasks
+          // TODO 2: Should really use a polling, event-based, or proper callback flow here. But don't have time right now
+          ///// START RTM //////
 
-      gunzip.on('end', function() {
-        console.log('Finished getting HabitRPG tasks.');
-        console.log("Let's grab the Remember the Milk tasks now. We'll restrict it to those created within the last week for now. First, we have to make sure we're authenticated...");
-        // TODO: This is where I would continue with getting RTM tasks
-        // TODO 2: Should really use a polling, event-based, or proper callback flow here. But don't have time right now
-        ///// START RTM //////
+          // TODO: Generate auth URL. Get user to go there and then come back and respond to some prompt when they have if we don't already have a valid auth token for them, then store the auth token in a file somewhere (probably the home directory).
+          // If we have the token, then first just grab all the tasks in their Inbox.
+          // Delay all API calls by 1 second.
 
-        // TODO: Generate auth URL. Get user to go there and then come back and respond to some prompt when they have if we don't already have a valid auth token for them, then store the auth token in a file somewhere (probably the home directory).
-        // If we have the token, then first just grab all the tasks in their Inbox.
-        // Delay all API calls by 1 second.
+          // OK, let's see what RTM says I have to do...OK, first I need a signing function. I sign my requests with this.
+          var tempRtmCreds = {
+            apiKey: "1cca74e8b073112b8e5975ec3d797e1a",
+            sharedSecret: "a253e6102be98e1d"
+          };
 
-        // OK, let's see what RTM says I have to do...OK, first I need a signing function. I sign my requests with this.
-        var tempRtmCreds = {
-          apiKey: "1cca74e8b073112b8e5975ec3d797e1a",
-          sharedSecret: "a253e6102be98e1d"
-        };
+          var rtmapi = new RtmNode(tempRtmCreds.apiKey, tempRtmCreds.sharedSecret);
 
-        var rtmapi = new RtmNode(tempRtmCreds.apiKey, tempRtmCreds.sharedSecret);
+          tempRtmCreds.authToken = "";
+          // TODO: Check for a stored auth token. Do the following if we don't have it.
+          if (fs.existsSync(path.join(process.env.HOME, '.htsrtmtoken.json'))) {
+            tempRtmCreds.authToken = fs.readFileSync(path.join(process.env.HOME, '.htsrtmtoken.json')).toString();
+          }
 
-        tempRtmCreds.authToken = "";
-        // TODO: Check for a stored auth token. Do the following if we don't have it.
-        if (fs.existsSync(path.join(process.env.HOME, '.htsrtmtoken.json'))) {
-          tempRtmCreds.authToken = fs.readFileSync(path.join(process.env.HOME, '.htsrtmtoken.json')).toString();
-        }
+          if (tempRtmCreds.authToken) {
+            // TODO: Do a check to make sure it works also. Because it might have expired.
+            rtmapi.checkToken(tempRtmCreds.authToken, function(result) {
+              if (result) {
+                rtmContinue(rtmapi, tempRtmCreds.authToken);
+              }
+              else {
+                console.log("ACTION NEEDED: Looks like our authorization has expired. This happens sometimes; no big deal. I'm going to take you through the authentication process again now.");
+                authorizeRtm(rtmapi);
+              }
+            });
 
-        if (tempRtmCreds.authToken) {
-          // TODO: Do a check to make sure it works also. Because it might have expired.
-          rtmapi.checkToken(tempRtmCreds.authToken, function(result) {
-            if (result) {
-              rtmContinue(rtmapi, tempRtmCreds.authToken);
-            }
-            else {
-              console.log("ACTION NEEDED: Looks like our authorization has expired. This happens sometimes; no big deal. I'm going to take you through the authentication process again now.");
-              authorizeRtm(rtmapi);
-            }
-          });
-
-          // Get tasks and stuff
+            // Get tasks and stuff
+          }
+          else {
+            authorizeRtm(rtmapi);
+          }
+          ///// END RTM //////
         }
         else {
-          authorizeRtm(rtmapi);
+          console.log("Got error: " + util.inspect(res.status) + ", " + util.inspect(res.header));
         }
-        ///// END RTM //////
-      });
-    }).on('error', function(e) {
-      console.log("Got error: " + e.message);
     });
+
+    // TODO: Remove me soon
+    /* httpCallback = debugMode ? https : http;
+
+    // TODO: Use request() instead
+    httpCallback.get(options, ).on('error', function(e) {
+      console.log("Got error: " + e.message);
+    }); */
     ////// END HABIT //////
   }
   else {
