@@ -8,7 +8,7 @@ This is a quick-and-dirty tool (currently planned to be a command line-only tool
 Installation
 ============
 
-I don't know yet. Clone it and run `./main.js`. That works at least.
+I don't know yet. Clone it and run `npm install`, then `./main.js`. That works at least.
 
 Roadmap
 =======
