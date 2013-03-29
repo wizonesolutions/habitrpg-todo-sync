@@ -24,23 +24,28 @@ var requestStuff = {
   host: debugMode ? 'localhost:3000' : betaServer ? 'beta.habitrpg.com' : 'habitrpg.com'
 };
 
-prompt.start();
+if (process.env.FORCE === undefined) {
+  prompt.start();
 
-var properties = [
-  {
-    name: 'okToContinue',
-    type: 'string'
-  }
-];
+  var properties = [
+    {
+      name: 'okToContinue',
+      type: 'string'
+    }
+  ];
 
-console.log("You are about to synchronize tasks between HabitRPG and Remember the Milk.\n\nMode: " + mode + "\nServer: " + requestStuff.host + "\n\nIf this is OK with you, type the word yes in full");
-prompt.get(properties, function(err, result) {
-  if (err) { return onErr(err); }
+  console.log("You are about to synchronize tasks between HabitRPG and Remember the Milk.\n\nMode: " + mode + "\nServer: " + requestStuff.host + "\n\nIf this is OK with you, type the word yes in full");
+  prompt.get(properties, function(err, result) {
+    if (err) { return onErr(err); }
 
-  if (result.okToContinue == "yes")  {
-    startSync();
-  }
-});
+    if (result.okToContinue == "yes")  {
+      startSync();
+    }
+  });
+}
+else {
+  startSync();
+}
 
 function startSync() {
   console.log('Now syncing with ' + requestStuff.host + '...');
@@ -145,35 +150,53 @@ function authorizeRtm(rtmapi) {
   // OK, wait, before the signing function, let's actually make something to sign.
   // Looks like the first thing I need is a frob. Uhh...oh wait, I need a way to call methods! I'll just do it straight up in the class to start and refactor later, maybe.
   existingFrob = undefined;
+  skipSiteAuth = false;
   if (process.env.FROB !== undefined) {
     existingFrob = process.env.FROB;
+    skipSiteAuth = true;
   }
-  rtmapi.getFrob(existingFrob, function(theFrob) {
-    // We have frob. Umm, so now what? Oh, OK. We have to build an
-    // authentication URL. This is pretty easy.
-    var authUrl = rtmapi.getAuthUrl(theFrob);
-    console.log('Go here and authorize this app: ' + "\n\n" +
 
-                authUrl + "\n\n" +
+  // TODO: Branch. If skipSiteAuth then just show a skipping message, saying to Ctrl-C if it loops forever
+  if (!skipSiteAuth) {
+    console.log('Existing frob: ' + existingFrob);
+    // TODO: Don't need existingFrob anymore. It was to avoid branching here.
+    // Now I have, so kill it some itme.
+    rtmapi.getFrob(existingFrob, function(theFrob) {
+      // We have frob. Umm, so now what? Oh, OK. We have to build an
+      // authentication URL. This is pretty easy.
+      var authUrl = rtmapi.getAuthUrl(theFrob);
+      console.log("\n" +
+                  'Go here and authorize this app: ' + "\n\n" +
 
-                "I'll wait. Just press enter when you're done or if you've already authorized and provided the frob as an environment variable (looking at you @wizonesolutions).");
-    prompt.start();
-    prompt.get("dummyEnter", function(err, result) {
-      if (err) { return onErr(err); }
-      rtmapi.getToken(theFrob, function(authToken) {
-        if (!authToken) {
-          console.log("ERROR: Looks like authentication didn't work out. No big deal. Let's try again.");
-          // TODO: If they do this a lot, will the stack get too big? Unlikely to happen though, so I'm not going to think too hard about it...
-          authorizeRtm(rtmapi);
-          return;
-        }
+                  authUrl + "\n\n" +
 
-        // Save the auth token, yeah?
-        console.log("Saving your auth token so you won't have to do this again for a while...");
-        fs.writeFileSync(path.join(process.env.HOME, '.htsrtmtoken.json'), authToken);
-        rtmContinue(rtmapi, authToken);
+                  "I'll wait. Just press enter when you're done or if you've already authorized and provided the frob as an environment variable (looking at you @wizonesolutions).");
+      prompt.start();
+      prompt.get("dummyEnter", function(err, result) {
+        if (err) { return onErr(err); }
+        onReturnFromRtmSite(rtmapi, theFrob);
       });
     });
+  }
+  else {
+    console.log("WARNING: Skipping site authentication due to frob being provided on command line. This might send you into a callback loop. Press Ctrl+C if that happens.");
+    onReturnFromRtmSite(rtmapi, existingFrob);
+  }
+}
+
+function onReturnFromRtmSite(rtmapi, theFrob) {
+  rtmapi.getToken(theFrob, function(authToken) {
+    if (!authToken) {
+      console.log("ERROR: Looks like authentication didn't work out. No big deal. Let's try again.");
+      // TODO: If they do this a lot, will the stack get too big? Unlikely to happen though, so I'm not going to think too hard about it...
+      authorizeRtm(rtmapi);
+      return;
+    }
+
+    // Save the auth token, yeah?
+    console.log("Saving your auth token so you won't have to do this again for a while...");
+    fs.writeFileSync(path.join(process.env.HOME, '.htsrtmtoken.json'), authToken);
+    rtmContinue(rtmapi, authToken);
   });
 }
 
