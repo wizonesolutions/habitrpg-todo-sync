@@ -100,7 +100,7 @@ function startSync() {
         tempRtmCreds.authToken = "";
         // TODO: Check for a stored auth token. Do the following if we don't have it.
         if (fs.existsSync(path.join(process.env.HOME, '.htsrtmtoken.json'))) {
-          tempRtmCreds.authToken = fs.readFileSync(path.join(process.env.HOME, '.htsrtmtoken.json'));
+          tempRtmCreds.authToken = fs.readFileSync(path.join(process.env.HOME, '.htsrtmtoken.json')).toString();
         }
 
         if (tempRtmCreds.authToken) {
