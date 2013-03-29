@@ -13,6 +13,8 @@ var parser = new iniReader.IniReader(),
   request = require('superagent'),
   url = require('url'),
   util = require('util'),
+  moment = require('moment'),
+  HabitRpg = require('node-habit'),
   _ = require('underscore');
 
 var hrpgConfigPath = path.resolve(path.join(process.env.HOME, '.habitrpgrc'));
@@ -79,20 +81,11 @@ function startSync() {
       };
     }
 
-    // TODO: Remove me soon
-    /* var options = {
-      hostname: requestStuff.host,
-      port: requestStuff.port,
-      path: '/api/v1/user/tasks',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept-Encoding': 'gzip, deflate',
-        'x-api-user': hrpgAuth.user_id,
-        'x-api-key': hrpgAuth.api_token
-      }
-    }; */
     habitRequestPath = requestStuff.protocol + '://' + requestStuff.host + ':' + requestStuff.port + requestStuff.path;
     console.log("HabitRPG request path: " + habitRequestPath);
+
+    // Oh, we're going to do stuff like this again later.
+    var habitapi = new HabitRpg(hrpgAuth.user_id, hrpgAuth.api_token, requestStuff.protocol + '://' + requestStuff.host + ':' + requestStuff.port);
 
     request.get(habitRequestPath)
       .query({type: 'todo'})
@@ -136,18 +129,18 @@ function startSync() {
             // TODO: Do a check to make sure it works also. Because it might have expired.
             rtmapi.checkToken(tempRtmCreds.authToken, function(result) {
               if (result) {
-                rtmContinue(rtmapi, tempRtmCreds.authToken);
+                rtmContinue(habitapi, rtmapi, tempRtmCreds.authToken);
               }
               else {
                 console.log("ACTION NEEDED: Looks like our authorization has expired. This happens sometimes; no big deal. I'm going to take you through the authentication process again now.");
-                authorizeRtm(rtmapi);
+                authorizeRtm(habitapi, rtmapi);
               }
             });
 
             // Get tasks and stuff
           }
           else {
-            authorizeRtm(rtmapi);
+            authorizeRtm(habitapi, rtmapi);
           }
           ///// END RTM //////
         }
@@ -179,7 +172,7 @@ function startSync() {
   }
 }
 
-function authorizeRtm(rtmapi) {
+function authorizeRtm(habitapi, rtmapi) {
   // OK, wait, before the signing function, let's actually make something to sign.
   // Looks like the first thing I need is a frob. Uhh...oh wait, I need a way to call methods! I'll just do it straight up in the class to start and refactor later, maybe.
   existingFrob = undefined;
@@ -207,43 +200,49 @@ function authorizeRtm(rtmapi) {
       prompt.start();
       prompt.get("dummyEnter", function(err, result) {
         if (err) { return onErr(err); }
-        onReturnFromRtmSite(rtmapi, theFrob);
+        onReturnFromRtmSite(habitapi, rtmapi, theFrob);
       });
     });
   }
   else {
     console.log("WARNING: Skipping site authentication due to frob being provided on command line. This might send you into a callback loop. Press Ctrl+C if that happens.");
-    onReturnFromRtmSite(rtmapi, existingFrob);
+    onReturnFromRtmSite(habitapi, rtmapi, existingFrob);
   }
 }
 
-function onReturnFromRtmSite(rtmapi, theFrob) {
+function onReturnFromRtmSite(habitapi, rtmapi, theFrob) {
   rtmapi.getToken(theFrob, function(authToken) {
     if (!authToken) {
       console.log("ERROR: Looks like authentication didn't work out. No big deal. Let's try again.");
       // TODO: If they do this a lot, will the stack get too big? Unlikely to happen though, so I'm not going to think too hard about it...
-      authorizeRtm(rtmapi);
+      authorizeRtm(habitapi, rtmapi);
       return;
     }
 
     // Save the auth token, yeah?
     console.log("Saving your auth token so you won't have to do this again for a while...");
     fs.writeFileSync(path.join(process.env.HOME, '.htsrtmtoken.json'), authToken);
-    rtmContinue(rtmapi, authToken);
+    rtmContinue(habitapi, rtmapi, authToken);
   });
 }
 
-function rtmContinue(rtmapi) {
+function rtmContinue(habitapi, rtmapi, authToken) {
+  rtmapi.setAuthToken(authToken);
   console.log("Alright, we're all good on the authentication front. Let's continue grabbing those tasks.");
-}
+  rtmapi.getTasks(undefined, 'addedWithin:"1 week of today"', undefined, function(response) {
+    // TODO: Process the tasks
+    console.log(util.inspect(response.tasks));
+    response.tasks.list.forEach(function(item) {
+      // Log each taskSeries. Don't understand why there are so few.
+      console.log('taskseries for ' + item.id + ': ' + util.inspect(item.taskseries));
+      // We're pretty much done here, so it's fine for this to be async. I
+      // think. It's probably going to say it's done too soon, but whatevs.
 
-function gunzipJSON(response){
-  var gunzip = zlib.createGunzip();
-  var json = "";
-
-  response.pipe(gunzip);
-
-  return gunzip;
+      // Add it.
+      // TODO: Don't duplicate tasks
+      habitapi.addTask('todo', item.taskseries.name, {note: 'Some fancy string with RTM data will go here'});
+    });
+  });
 }
 
 function onErr(err) {
