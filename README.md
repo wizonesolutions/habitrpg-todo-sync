@@ -8,7 +8,23 @@ This is a quick-and-dirty tool (currently planned to be a command line-only tool
 Installation
 ============
 
-I don't know yet. Clone it and run `npm install`, then `./main.js`. That works at least.
+Clone the repo and run `npm install`, `chmod +x main.js`, then `./main.js`. That works at least.
+
+Environment variables
+---------------------
+These generally override anything else the app would try to find out.
+
+`FORCE`: Run non-interactively. Simply setting this (even `FORCE=`) is enough.
+`HRPG_USER_ID`: Set the `x-api-user` instead of getting it from `.habitrpgrc` — *good for development*
+`HRPG_API_TOKEN`: Set the `x-api-key` instead of getting it from `.habitrpgrc` — *good for development*
+`DEBUG_MODE`: Set to `1` to use `http://localhost:3000` instead of `https://habitrpg.com`
+`BETA_MODE`: Set to `1` to use `https://beta.habitrpg.com` instead of `https://habitrpg.com`. Note that `DEBUG_MODE` is stronger than this.
+`DRY_RUN`: Set to any truthy value. Don't do any mutative (is that a word?) API operations. Still performs read-only operations.
+`FULL_SYNC`: Set to `1` to sync **all** Remember the Milk tasks instead of just those added within the last week. It goes without saying that this may take a while.
+`FROB`: ...internal use only, implementation detail etc. etc.. Basically, if the app gives you an auth URL and you exit out of the app before it authenticates you, but you authorize it on the RTM side, you can copy the `frob` from the query string and provide it on the command line. This will skip getting a new one from the API.
+
+Usage
+=====
 
 Roadmap
 =======

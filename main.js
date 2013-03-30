@@ -230,8 +230,28 @@ function onReturnFromRtmSite(habitapi, rtmapi, theFrob) {
 function rtmContinue(habitapi, rtmapi, authToken) {
   rtmapi.setAuthToken(authToken);
   console.log("Alright, we're all good on the authentication front. Let's continue grabbing those tasks.");
-  rtmapi.getTasks(undefined, 'addedWithin:"1 week of today"', undefined, function(response) {
-    // TODO: Process the tasks
+
+  lastSync = undefined;
+  filter = 'addedWithin:"1 week of today"';
+
+  // For the brave
+  if (process.env.FULL_SYNC == "1") {
+    filter = undefined;
+  }
+
+  // Figure out when we last synced.
+  // TODO: Try combining this stuff floating around into one file. Either .habitrpgrc or my own.
+  if (fs.exists(file.join(process.env.HOME, '.htsrtmlastsync'))) {
+    // TODO: Make this work?
+  }
+
+  // For additional fun and profit (JUST KIDDING REMEMBER THE MILK; IT'S
+  // STRICTLY ONLY FOR FUN), let's massage the Habit task data a little bit.
+  var habitTaskMap = massageHabitTodos(habitResponse);
+
+  rtmapi.getTasks(undefined, filter, lastSync, function(response) {
+    // TODO: I would update the lastSync here
+
     console.log(util.inspect(response.tasks));
     if (!_.isArray(response.tasks)) {
       response.tasks = [response.tasks];
@@ -254,7 +274,9 @@ function rtmContinue(habitapi, rtmapi, authToken) {
         list.taskseries.forEach(function(taskseries) {
           // Add it.
           // TODO: Don't duplicate tasks
-          habitapi.addTask('todo', taskseries.name, {notes: 'Some fancy string with RTM data will go here'});
+          if (!process.env.DRY_RUN) {
+            habitapi.addTask('todo', taskseries.name, {hts_external_id: taskseries.id, hts_external_source: "rtm"});
+          }
 
           if (taskseries.name === undefined) {
             console.log('Undefined? ' + util.inspect(item));
