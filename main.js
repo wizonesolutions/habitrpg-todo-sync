@@ -232,15 +232,34 @@ function rtmContinue(habitapi, rtmapi, authToken) {
   rtmapi.getTasks(undefined, 'addedWithin:"1 week of today"', undefined, function(response) {
     // TODO: Process the tasks
     console.log(util.inspect(response.tasks));
-    response.tasks.list.forEach(function(item) {
-      // Log each taskSeries. Don't understand why there are so few.
-      console.log('taskseries for ' + item.id + ': ' + util.inspect(item.taskseries));
-      // We're pretty much done here, so it's fine for this to be async. I
-      // think. It's probably going to say it's done too soon, but whatevs.
+    if (!_.isArray(response.tasks)) {
+      response.tasks = [response.tasks];
+    }
+    response.tasks.forEach(function(item) {
+      if (!_.isArray(item.list)) {
+        item.list = [item.list];
+      }
 
-      // Add it.
-      // TODO: Don't duplicate tasks
-      habitapi.addTask('todo', item.taskseries.name, {note: 'Some fancy string with RTM data will go here'});
+      item.list.forEach(function(list) {
+        // console.log('taskseries for ' + item.id + ': ' + util.inspect(item.taskseries));
+
+        // We're pretty much done here, so it's fine for this to be async. I
+        // think. It's probably going to say it's done too soon, but whatevs.
+
+        if (!_.isArray(list.taskseries)) {
+          list.taskseries = [list.taskseries];
+        }
+
+        list.taskseries.forEach(function(taskseries) {
+          // Add it.
+          // TODO: Don't duplicate tasks
+          habitapi.addTask('todo', taskseries.name, {note: 'Some fancy string with RTM data will go here'});
+
+          if (taskseries.name === undefined) {
+            console.log('Undefined? ' + util.inspect(item));
+          }
+        });
+      });
     });
   });
 }
