@@ -19,8 +19,6 @@ var parser = new iniReader.IniReader(),
   HabitRpg = require('node-habit'),
   _ = require('underscore');
 
-var BEFORE_RTM_EXISTED = moment('2000-01-01T00:00Z').format();
-
 var hrpgConfigPath = path.resolve(path.join(process.env.HOME, '.habitrpgrc'));
 
 var debugMode = process.env.DEBUG_MODE == "1" ? true : false;
@@ -218,13 +216,14 @@ function rtmContinue(habitapi, rtmapi, authToken) {
   rtmapi.setAuthToken(authToken);
   console.log("Alright, we're all good on the authentication front. Let's continue grabbing those tasks.");
 
-  lastSync = BEFORE_RTM_EXISTED;
+  // TODO: Test that lastSync works when there is no file
+  lastSync = undefined;
   filter = 'addedWithin:"1 week of today"';
 
   // For the brave
   if (process.env.FULL_SYNC == "1") {
     filter = undefined;
-    lastSync = BEFORE_RTM_EXISTED;
+    lastSync = undefined;
   } else {
     // Figure out when we last synced.
     // TODO: Try combining this stuff floating around into one file. Either .habitrpgrc or my own.
@@ -232,7 +231,6 @@ function rtmContinue(habitapi, rtmapi, authToken) {
       lastSync = fs.readFileSync(path.join(process.env.HOME, '.htsrtmlastsync')).toString();
       filter = undefined; // filter messes us up if we actually have a last_sync.
     }
-    // If the file doesn't exist, BEFORE_RTM_EXISTED will be used because it's the default.
   }
 
   console.log('We last synchronized on ' + lastSync);
@@ -270,7 +268,6 @@ function rtmContinue(habitapi, rtmapi, authToken) {
         list.taskseries.every(function(taskseries) {
           if (taskseries === undefined) { return true; }
           // Add it.
-          // TODO: Don't duplicate tasks
           if (habitTaskMap && habitTaskMap[TODO_SOURCE_RTM] && habitTaskMap[TODO_SOURCE_RTM][taskseries.id]) {
             console.log('Skipping existing task: ' + taskseries.name);
           } else {
@@ -291,11 +288,29 @@ function rtmContinue(habitapi, rtmapi, authToken) {
         if (list.deleted) {
           list.deleted = moo(list.deleted);
 
-          list.deleted.every(function(item) {
-
+          list.deleted.every(function(deleted) {
+            if (deleted === undefined) { return false; }
+            deleted.taskseries = moo(deleted.taskseries);
+            deleted.taskseries.every(function(taskseries) {
+              // TODO: OMG PUT THIS IN A VARIABLE STOP DUPING A TWO-LEVEL DEEP OBJECT
+              // This comment left way too late at night
+              if (habitTaskMap && habitTaskMap[TODO_SOURCE_RTM] && habitTaskMap[TODO_SOURCE_RTM][taskseries.id]) {
+                console.log('Deleting task: ' + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].text);
+                if (!process.env.DRY_RUN) {
+                  habitapi.deleteTask(habitTaskMap[TODO_SOURCE_RTM][taskseries.id].id);
+                }
+                console.log('Dry run, so not really deleting. Would delete Habit task ' + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].id + ', called ' + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].text);
+              } else {
+                console.log("We have no record of task " + taskseries.id + ', so doing nothing.');
+              }
+              return true;
+            });
+            return true;
           });
         }
+        return true;
       });
+      return true;
     });
   });
 }
@@ -316,6 +331,8 @@ function massageHabitTodos(habitResponse) {
       massagedHabit[item.hts_external_source] = massagedHabit[item.hts_external_source] || {};
       massagedHabit[item.hts_external_source][item.hts_external_id] = item;
     }
+
+    return true;
   });
 
   return massagedHabit;
