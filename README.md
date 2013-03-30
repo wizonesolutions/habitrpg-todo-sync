@@ -1,4 +1,6 @@
-**Under construction. It currently adds all the RTM tasks you've created in the past week to HabitRPG.** Read the plan at: https://trello.com/card/remember-the-milk/50e5d3684fe3a7266b0036d6/21. And see issue #1.
+**Under construction. It currently adds all the RTM tasks you've created in the past week to HabitRPG and does not add duplicates anymore.**
+
+Read the plan at: https://trello.com/card/remember-the-milk/50e5d3684fe3a7266b0036d6/21. And see issue #1.
 
 HabitRPG Todo Synchronization
 =============================
@@ -26,7 +28,7 @@ These generally override anything else the app would try to find out.
 - `HRPG_API_TOKEN`: Set the `x-api-key` instead of getting it from `.habitrpgrc` — *good for development*
 - `DEBUG_MODE`: Set to `1` to use `http://localhost:3000` instead of `https://habitrpg.com`
 - `BETA_MODE`: Set to `1` to use `https://beta.habitrpg.com` instead of `https://habitrpg.com`. Note that `DEBUG_MODE` is stronger than this.
-- `DRY_RUN`: Set to any truthy value. Don't do any mutative (is that a word?) API operations. Still performs read-only operations.
+- `DRY_RUN`: Set to any truthy value. Don't do any mutative (is that a word?) API operations. Still performs read-only operations. **Note that dry run mode still goes through the authentication sequence for Remember the Milk and writes your credentials to a file. It would be fairly useless if it didn't do this.** It does not write the marker file for last sync, since this would actually change behavior on the next run.
 - `FULL_SYNC`: Set to `1` to sync **all** Remember the Milk tasks instead of just those added within the last week. It goes without saying that this may take a while.
 - `FORCE`: Run non-interactively. Simply setting this (even `FORCE=`) is enough. *Try to avoid doing this. The prompts are in there for a good reason.*
 - `FROB`: ...internal use only, implementation detail etc. etc.. Basically, if the app gives you an auth URL and you exit out of the app before it authenticates you, but you authorize it on the RTM side, you can copy the `frob` from the query string and provide it on the command line. This will skip getting a new one from the API.
