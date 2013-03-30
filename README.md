@@ -1,4 +1,4 @@
-**Under construction. It doesn't work. But it's coming along.** Read the plan at: https://trello.com/card/remember-the-milk/50e5d3684fe3a7266b0036d6/21
+**Under construction. It currently adds all the RTM tasks you've created in the past week to HabitRPG.** Read the plan at: https://trello.com/card/remember-the-milk/50e5d3684fe3a7266b0036d6/21. And see issue #1.
 
 HabitRPG Todo Synchronization
 =============================
