@@ -253,7 +253,7 @@ function rtmContinue(habitapi, rtmapi, authToken) {
         list.taskseries.forEach(function(taskseries) {
           // Add it.
           // TODO: Don't duplicate tasks
-          habitapi.addTask('todo', taskseries.name, {note: 'Some fancy string with RTM data will go here'});
+          habitapi.addTask('todo', taskseries.name, {notes: 'Some fancy string with RTM data will go here'});
 
           if (taskseries.name === undefined) {
             console.log('Undefined? ' + util.inspect(item));
