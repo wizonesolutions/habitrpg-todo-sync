@@ -19,6 +19,8 @@ var parser = new iniReader.IniReader(),
   HabitRpg = require('node-habit'),
   _ = require('underscore');
 
+var BEFORE_RTM_EXISTED = moment('2000-01-01T00:00Z').format();
+
 var hrpgConfigPath = path.resolve(path.join(process.env.HOME, '.habitrpgrc'));
 
 var debugMode = process.env.DEBUG_MODE == "1" ? true : false;
@@ -55,8 +57,7 @@ if (process.env.FORCE === undefined) {
     if (result.okToContinue == "yes")  {
       startSync();
     }
-  });
-} else {
+  }); } else {
   startSync();
 }
 
@@ -217,33 +218,48 @@ function rtmContinue(habitapi, rtmapi, authToken) {
   rtmapi.setAuthToken(authToken);
   console.log("Alright, we're all good on the authentication front. Let's continue grabbing those tasks.");
 
-  lastSync = undefined;
+  lastSync = BEFORE_RTM_EXISTED;
   filter = 'addedWithin:"1 week of today"';
 
   // For the brave
   if (process.env.FULL_SYNC == "1") {
     filter = undefined;
+    lastSync = BEFORE_RTM_EXISTED;
+  } else {
+    // Figure out when we last synced.
+    // TODO: Try combining this stuff floating around into one file. Either .habitrpgrc or my own.
+    if (fs.existsSync(path.join(process.env.HOME, '.htsrtmlastsync'))) {
+      lastSync = fs.readFileSync(path.join(process.env.HOME, '.htsrtmlastsync')).toString();
+      filter = undefined; // filter messes us up if we actually have a last_sync.
+    }
+    // If the file doesn't exist, BEFORE_RTM_EXISTED will be used because it's the default.
   }
 
-  // Figure out when we last synced.
-  // TODO: Try combining this stuff floating around into one file. Either .habitrpgrc or my own.
-  if (fs.exists(path.join(process.env.HOME, '.htsrtmlastsync'))) {
-    // TODO: Make this work?
-  }
+  console.log('We last synchronized on ' + lastSync);
 
   // For additional fun and profit (JUST KIDDING REMEMBER THE MILK; IT'S
   // STRICTLY ONLY FOR FUN), let's massage the Habit task data a little bit.
   var habitTaskMap = massageHabitTodos(habitResponse);
+
+  if (!process.env.DRY_RUN) {
+    // TODO: Abstract path to this file. Quit duplicating code.
+    fs.writeFileSync(path.join(process.env.HOME, '.htsrtmlastsync'), moment().format());
+  } else {
+    console.log("DRY RUN: Not writing lastSync time to file.");
+  }
 
   rtmapi.getTasks(undefined, filter, lastSync, function(response) {
     // TODO: I would update the lastSync here
 
     // console.log(util.inspect(response.tasks));
     response.tasks = moo(response.tasks);
-    response.tasks.forEach(function(item) {
+    response.tasks.every(function(item) {
+      if (item === undefined) { return true; }
+
       item.list = moo(item.list);
 
-      item.list.forEach(function(list) {
+      item.list.every(function(list) {
+        if (list === undefined) { return true; }
         // console.log('taskseries for ' + item.id + ': ' + util.inspect(item.taskseries));
 
         // We're pretty much done here, so it's fine for this to be async. I
@@ -251,10 +267,10 @@ function rtmContinue(habitapi, rtmapi, authToken) {
 
         list.taskseries = moo(list.taskseries);
 
-        list.taskseries.forEach(function(taskseries) {
+        list.taskseries.every(function(taskseries) {
+          if (taskseries === undefined) { return true; }
           // Add it.
           // TODO: Don't duplicate tasks
-          // console.log('habitTaskMap contains: ' + util.inspect(habitTaskMap));
           if (habitTaskMap && habitTaskMap[TODO_SOURCE_RTM] && habitTaskMap[TODO_SOURCE_RTM][taskseries.id]) {
             console.log('Skipping existing task: ' + taskseries.name);
           } else {
@@ -272,6 +288,13 @@ function rtmContinue(habitapi, rtmapi, authToken) {
             }
           }
         });
+        if (list.deleted) {
+          list.deleted = moo(list.deleted);
+
+          list.deleted.every(function(item) {
+
+          });
+        }
       });
     });
   });
@@ -286,7 +309,7 @@ function massageHabitTodos(habitResponse) {
   var massagedHabit = {};
 
   // So, this is is pretty simple. Pretty sure we have an array at this point?
-  habitResponse.forEach(function(item) {
+  habitResponse.every(function(item) {
     // Skip non-external tasks.
     if (item.hts_external_source) {
       // We want to sort them by service, then ID. So:
