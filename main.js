@@ -87,6 +87,7 @@ function startSync() {
     // Oh, we're going to do stuff like this again later.
     var habitapi = new HabitRpg(hrpgAuth.user_id, hrpgAuth.api_token, requestStuff.protocol + '://' + requestStuff.host + ':' + requestStuff.port);
 
+    // TODO: Need to write HabitRpg.getAllTasks() and use that instead of doing it manually here
     request.get(habitRequestPath)
       .query({type: 'todo'})
       .type('application/json')
