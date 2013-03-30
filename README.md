@@ -12,7 +12,7 @@ Clone the repo and run `npm install`, `chmod +x main.js`, then `./main.js`. That
 
 Usage
 =====
-./main.js
+`./main.js`
 
 If all else fails, `node main.js`. Put environment variables in front. In development, you might do something like:
 
