@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+var TODO_SOURCE_RTM = "rtm"; // I hate long variable names, but one must do what one must do.
+
 var iniReader = require('inireader');
 
 var parser = new iniReader.IniReader(),
@@ -30,6 +32,8 @@ var requestStuff = {
   path: "/api/v1/user/tasks"
 };
 
+var habitResponse;
+
 if (process.env.FORCE === undefined) {
   prompt.start();
 
@@ -52,8 +56,7 @@ if (process.env.FORCE === undefined) {
       startSync();
     }
   });
-}
-else {
+} else {
   startSync();
 }
 
@@ -70,8 +73,7 @@ function startSync() {
         user_id: process.env.HRPG_USER_ID,
         api_token: process.env.HRPG_API_TOKEN
       };
-    }
-    else {
+    } else {
       ////// START HABIT //////
       parser.load(hrpgConfigPath);
 
@@ -82,7 +84,6 @@ function startSync() {
     }
 
     habitRequestPath = requestStuff.protocol + '://' + requestStuff.host + ':' + requestStuff.port + requestStuff.path;
-    console.log("HabitRPG request path: " + habitRequestPath);
 
     // Oh, we're going to do stuff like this again later.
     var habitapi = new HabitRpg(hrpgAuth.user_id, hrpgAuth.api_token, requestStuff.protocol + '://' + requestStuff.host + ':' + requestStuff.port);
@@ -100,15 +101,14 @@ function startSync() {
 
           console.log("Got response: " + res.status);
 
-          console.log("BODY: " + util.inspect(res.text));
+          // console.log(util.inspect(res.text));
+
+          habitResponse = moo(res.text); // I don't think Habit does this, but just in case. Also, I like calling moo().
 
           console.log('Finished getting HabitRPG tasks.');
           console.log("Let's grab the Remember the Milk tasks now. We'll restrict it to those created within the last week for now. First, we have to make sure we're authenticated...");
-          // TODO: This is where I would continue with getting RTM tasks
-          // TODO 2: Should really use a polling, event-based, or proper callback flow here. But don't have time right now
           ///// START RTM //////
 
-          // TODO: Generate auth URL. Get user to go there and then come back and respond to some prompt when they have if we don't already have a valid auth token for them, then store the auth token in a file somewhere (probably the home directory).
           // If we have the token, then first just grab all the tasks in their Inbox.
           // Delay all API calls by 1 second.
 
@@ -127,39 +127,27 @@ function startSync() {
           }
 
           if (tempRtmCreds.authToken) {
-            // TODO: Do a check to make sure it works also. Because it might have expired.
+            // Do a check to make sure it works also. Because it might have expired.
             rtmapi.checkToken(tempRtmCreds.authToken, function(result) {
               if (result) {
                 rtmContinue(habitapi, rtmapi, tempRtmCreds.authToken);
-              }
-              else {
+              } else {
                 console.log("ACTION NEEDED: Looks like our authorization has expired. This happens sometimes; no big deal. I'm going to take you through the authentication process again now.");
                 authorizeRtm(habitapi, rtmapi);
               }
             });
 
             // Get tasks and stuff
-          }
-          else {
+          } else {
             authorizeRtm(habitapi, rtmapi);
           }
           ///// END RTM //////
-        }
-        else {
+        } else {
           console.log("Got error: " + util.inspect(res.status) + ", " + util.inspect(res.header));
         }
     });
-
-    // TODO: Remove me soon
-    /* httpCallback = debugMode ? https : http;
-
-    // TODO: Use request() instead
-    httpCallback.get(options, ).on('error', function(e) {
-      console.log("Got error: " + e.message);
-    }); */
     ////// END HABIT //////
-  }
-  else {
+  } else {
     console.log("Please create a file called .habitrpgrc in your home directory.\n\n" +
 
                 "In it, put this:\n\n" +
@@ -183,7 +171,6 @@ function authorizeRtm(habitapi, rtmapi) {
     skipSiteAuth = true;
   }
 
-  // TODO: Branch. If skipSiteAuth then just show a skipping message, saying to Ctrl-C if it loops forever
   if (!skipSiteAuth) {
     console.log('Existing frob: ' + existingFrob);
     // TODO: Don't need existingFrob anymore. It was to avoid branching here.
@@ -204,8 +191,7 @@ function authorizeRtm(habitapi, rtmapi) {
         onReturnFromRtmSite(habitapi, rtmapi, theFrob);
       });
     });
-  }
-  else {
+  } else {
     console.log("WARNING: Skipping site authentication due to frob being provided on command line. This might send you into a callback loop. Press Ctrl+C if that happens.");
     onReturnFromRtmSite(habitapi, rtmapi, existingFrob);
   }
@@ -241,7 +227,7 @@ function rtmContinue(habitapi, rtmapi, authToken) {
 
   // Figure out when we last synced.
   // TODO: Try combining this stuff floating around into one file. Either .habitrpgrc or my own.
-  if (fs.exists(file.join(process.env.HOME, '.htsrtmlastsync'))) {
+  if (fs.exists(path.join(process.env.HOME, '.htsrtmlastsync'))) {
     // TODO: Make this work?
   }
 
@@ -252,14 +238,10 @@ function rtmContinue(habitapi, rtmapi, authToken) {
   rtmapi.getTasks(undefined, filter, lastSync, function(response) {
     // TODO: I would update the lastSync here
 
-    console.log(util.inspect(response.tasks));
-    if (!_.isArray(response.tasks)) {
-      response.tasks = [response.tasks];
-    }
+    // console.log(util.inspect(response.tasks));
+    response.tasks = moo(response.tasks);
     response.tasks.forEach(function(item) {
-      if (!_.isArray(item.list)) {
-        item.list = [item.list];
-      }
+      item.list = moo(item.list);
 
       item.list.forEach(function(list) {
         // console.log('taskseries for ' + item.id + ': ' + util.inspect(item.taskseries));
@@ -267,19 +249,27 @@ function rtmContinue(habitapi, rtmapi, authToken) {
         // We're pretty much done here, so it's fine for this to be async. I
         // think. It's probably going to say it's done too soon, but whatevs.
 
-        if (!_.isArray(list.taskseries)) {
-          list.taskseries = [list.taskseries];
-        }
+        list.taskseries = moo(list.taskseries);
 
         list.taskseries.forEach(function(taskseries) {
           // Add it.
           // TODO: Don't duplicate tasks
-          if (!process.env.DRY_RUN) {
-            habitapi.addTask('todo', taskseries.name, {hts_external_id: taskseries.id, hts_external_source: "rtm"});
-          }
-
-          if (taskseries.name === undefined) {
-            console.log('Undefined? ' + util.inspect(item));
+          // console.log('habitTaskMap contains: ' + util.inspect(habitTaskMap));
+          if (habitTaskMap && habitTaskMap[TODO_SOURCE_RTM] && habitTaskMap[TODO_SOURCE_RTM][taskseries.id]) {
+            console.log('Skipping existing task: ' + taskseries.name);
+          } else {
+            if (!process.env.DRY_RUN) {
+              habitapi.addTask('todo', taskseries.name, {hts_external_id: taskseries.id, hts_external_source: TODO_SOURCE_RTM});
+            } else {
+              console.log('Dry run summary: Would add "' + taskseries.name + '". The API would tell us something like:' + "\n\n" +
+                          util.inspect({
+                            type: "todo",
+                            text: taskseries.name,
+                            id: "not available in dry run mode",
+                            hts_external_id: taskseries.id,
+                            hts_external_source: TODO_SOURCE_RTM
+              }));
+            }
           }
         });
       });
@@ -291,3 +281,27 @@ function onErr(err) {
   console.log(err);
   return 1;
 }
+
+function massageHabitTodos(habitResponse) {
+  var massagedHabit = {};
+
+  // So, this is is pretty simple. Pretty sure we have an array at this point?
+  habitResponse.forEach(function(item) {
+    // Skip non-external tasks.
+    if (item.hts_external_source) {
+      // We want to sort them by service, then ID. So:
+      massagedHabit[item.hts_external_source] = massagedHabit[item.hts_external_source] || {};
+      massagedHabit[item.hts_external_source][item.hts_external_id] = item;
+    }
+  });
+
+  return massagedHabit;
+}
+
+// Looking at you, RTM's XML -> JSON conversion.
+// (This puts an object into a single-element array if it isn't an array
+// itself. Compensates for APIs that treat JSON like XML.)
+function moo(element) {
+  return !_.isArray(element) ? [element] : element;
+}
+var arrayify = moo;
