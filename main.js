@@ -76,9 +76,20 @@ function startSync() {
       ////// START HABIT //////
       parser.load(hrpgConfigPath);
 
+      var userIdParam = "auth.user_id";
+      var apiTokenParam = "auth.api_token";
+
+      // Which keys should we read?
+      if (debugMode) {
+        console.log('Using [auth-dev] settings from ' + hrpgConfigPath);
+        userIdParam = "auth-dev.user_id";
+        apiTokenParam = "auth-dev.api_token";
+      }
+
+      // Fall back gracefully-ish on the live settings even in DEBUG_MODE
       hrpgAuth = {
-        user_id: parser.param('auth.user_id'),
-        api_token: parser.param('auth.api_token')
+        user_id: parser.param(userIdParam) || parser.param('auth.user_id'),
+        api_token: parser.param(apiTokenParam) || parser.param('auth.api_token')
       };
     }
 
@@ -97,10 +108,6 @@ function startSync() {
       .end(function(res) {
         if (res.ok) {
           res.text = JSON.parse(res.text);
-
-          console.log("Got response: " + res.status);
-
-          // console.log(util.inspect(res.text));
 
           habitResponse = moo(res.text); // I don't think Habit does this, but just in case. Also, I like calling moo().
 
