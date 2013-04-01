@@ -240,7 +240,13 @@ function rtmContinue(habitapi, rtmapi, authToken) {
     }
   }
 
-  console.log('We last synchronized on ' + lastSync);
+  if (lastSync === undefined && process.env.FULL_SYNC === undefined) {
+    console.log("This is the first run. A full sync was not requested, so we are getting tasks added within the last week.");
+  } else if (lastSync === undefined && process.env.FULL_SYNC == "1") {
+    console.log("Doing a full sync!");
+  } else {
+    console.log('We last synchronized on ' + lastSync);
+  }
 
   // For additional fun and profit (JUST KIDDING REMEMBER THE MILK; IT'S
   // STRICTLY ONLY FOR FUN), let's massage the Habit task data a little bit.
@@ -248,6 +254,8 @@ function rtmContinue(habitapi, rtmapi, authToken) {
 
   if (!process.env.DRY_RUN) {
     // TODO: Abstract path to this file. Quit duplicating code.
+    // TODO: Roll back to the file's original time if something goes wrong.
+    // OR: Emit an event when all the adding and deleting has finished, and only write the file then.
     fs.writeFileSync(path.join(process.env.HOME, '.htsrtmlastsync'), moment().format());
   } else {
     console.log("DRY RUN: Not writing lastSync time to file.");
@@ -291,6 +299,7 @@ function rtmContinue(habitapi, rtmapi, authToken) {
               }));
             }
           }
+          return true;
         });
         if (list.deleted) {
           list.deleted = moo(list.deleted);
@@ -333,7 +342,7 @@ function massageHabitTodos(habitResponse) {
   // So, this is is pretty simple. Pretty sure we have an array at this point?
   habitResponse.every(function(item) {
     // Skip non-external tasks.
-    if (item.hts_external_source) {
+    if (item && item.hts_external_source) {
       // We want to sort them by service, then ID. So:
       massagedHabit[item.hts_external_source] = massagedHabit[item.hts_external_source] || {};
       massagedHabit[item.hts_external_source][item.hts_external_id] = item;
