@@ -47,11 +47,15 @@ if (process.env.FORCE === undefined) {
     }
   ];
 
-  console.log("You are about to synchronize tasks between HabitRPG and Remember the Milk.\n\nDebugging output: " + mode + "\n" +
-              "Server: " + requestStuff.host + "\n" +
-              "Port: " + requestStuff.port + "\n\n" +
+  console.log("You are about to synchronize tasks between HabitRPG and Remember the Milk.\n\n" +
 
-              "If this is OK with you, type the word yes in full");
+    (process.env.FULL_SYNC == "1" ? "*** YOU HAVE REQUESTED A FULL SYNC OF ALL TASKS. ***\n\n" : "") +
+
+    "Debugging output: " + mode + "\n" +
+    "Server: " + requestStuff.host + "\n" +
+    "Port: " + requestStuff.port + "\n\n" +
+
+    "If this is OK with you, type the word yes in full");
   prompt.get(properties, function(err, result) {
     if (err) { return onErr(err); }
 
