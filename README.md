@@ -26,7 +26,8 @@ These generally override anything else the app would try to find out.
 
 - `HRPG_USER_ID`: Set the `x-api-user` instead of getting it from `.habitrpgrc` — *good for development*
 - `HRPG_API_TOKEN`: Set the `x-api-key` instead of getting it from `.habitrpgrc` — *good for development*
-- `DEBUG_MODE`: Set to `1` to use `http://localhost:3000` instead of `https://habitrpg.com`
+- `DEBUG_MODE`: Set to `1` to show more verbose output. Also currently works with the `node-habit` and `rtmnode` modules bundled in `node_modules`, though I might take it out when I release them separately. - *good for development*
+- `DEV_MODE`: Set to `1` to use `http://localhost:3000` instead of `https://habitrpg.com`
 - `BETA_MODE`: Set to `1` to use `https://beta.habitrpg.com` instead of `https://habitrpg.com`. Note that `DEBUG_MODE` is stronger than this.
 - `DRY_RUN`: Set to any truthy value. Don't do any mutative (is that a word?) API operations. Still performs read-only operations. **Note that dry run mode still goes through the authentication sequence for Remember the Milk and writes your credentials to a file. It would be fairly useless if it didn't do this.** It does not write the marker file for last sync, since this would actually change behavior on the next run.
 - `FULL_SYNC`: Set to `1` to sync **all** Remember the Milk tasks instead of just those added within the last week. It goes without saying that this may take a while.
