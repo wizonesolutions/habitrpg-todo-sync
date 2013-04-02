@@ -313,7 +313,11 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
                   hts_external_source: TODO_SOURCE_RTM,
                   hts_external_rtm_list_id: list.id,
                   hts_external_rtm_task_id: taskseries.task.id,
-                  hts_last_known_state: HRPG_INCOMPLETE}, function(newTask) {
+                  hts_last_known_state: HRPG_INCOMPLETE,
+                  up: true,
+                  down: false,
+                  value: 0
+                }, function(newTask) {
                   habitTaskMap[TODO_SOURCE_RTM] = habitTaskMap[TODO_SOURCE_RTM] || {};
                   habitTaskMap[TODO_SOURCE_RTM][taskseries.id] = habitTaskMap[TODO_SOURCE_RTM][taskseries.id] || newTask;
                 });
@@ -329,6 +333,7 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
                               hts_last_known_state: HRPG_INCOMPLETE,
                               completed: false,
                               id: "not available in dry run mode",
+                              value: 0
                 }));
               }
               tasksAdded++;
