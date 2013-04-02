@@ -30,6 +30,8 @@ If all else fails, `node main.js`. Put environment variables in front. In develo
 
 BETA_MODE=1 DEBUG_MODE=1 ./main.js` (that's what I usually do)
 
+The first time you run, the app will help you get authenticated with both services. You need accounts on both, of course.
+
 For development, `[auth-dev]` is used if in `.habitrpgrc`, but `[auth-beta]` is not supported because the beta server uses the same DB as the live one.
 
 Environment variables
