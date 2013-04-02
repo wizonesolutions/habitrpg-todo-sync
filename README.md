@@ -7,7 +7,7 @@ HabitRPG Todo Synchronization
 
 This is a quick-and-dirty tool (currently planned to be a command line-only tool) to get Remember the Milk tasks into HabitRPG and track updates to both each time it's run. It isn't intended to be feature-complete, useful for everyone, or robust. But it is intended to work.
 
-=== So what does it actually do?
+### So what does it actually do?
 1. Grabs all your HabitRPG tasks for comparison purposes.
 1. Grabs all your Remember the Milk tasks (taking into account last time it synchronized and if you have passed `FULL_SYNC` or not).
 1. Now everything happens asynchronously:
