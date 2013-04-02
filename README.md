@@ -1,11 +1,21 @@
-**Under construction. It currently adds all the RTM tasks you've created in the past week to HabitRPG and does not add duplicates anymore.**
+**Version 1 is done! Development from here out will be driven by my experience using the tool and maybe yours? File issues!**
 
-Read the plan at: https://trello.com/card/remember-the-milk/50e5d3684fe3a7266b0036d6/21. And see issue #1.
+Original idea: Read the plan at: https://trello.com/card/remember-the-milk/50e5d3684fe3a7266b0036d6/21.
 
 HabitRPG Todo Synchronization
 =============================
 
 This is a quick-and-dirty tool (currently planned to be a command line-only tool) to get Remember the Milk tasks into HabitRPG and track updates to both each time it's run. It isn't intended to be feature-complete, useful for everyone, or robust. But it is intended to work.
+
+=== So what does it actually do?
+1. Grabs all your HabitRPG tasks for comparison purposes.
+1. Grabs all your Remember the Milk tasks (taking into account last time it synchronized and if you have passed `FULL_SYNC` or not).
+1. Now everything happens asynchronously:
+1. Adds new, incomplete tasks from Remember the Milk. The first time you sync, it only grabs the past week, and it only grabs incomplete tasks. Use `FULL_SYNC=1` in the environment variables to do a full synchronization.
+1. Deletes any tasks that have been deleted on the Remember the Milk side, but it doesn't do the same for tasks only deleted on the HabitRPG side.
+1. Completes tasks on the Remember the Milk side if they have been completed since last synchronization on the HabitRPG side.
+
+So it's not a true two-way synchronization yet, but it does the job and lets your tasks live in HabitRPG. I recommend deleting them from Remember the Milk and doing a synchronization if you want to delete one. If you want to track one in RTM only, then just delete it from HabitRPG. It might get synchronized again when you change it or complete recurring tasks, etc. in Remember the Milk.
 
 Installation
 ============
@@ -18,7 +28,9 @@ Usage
 
 If all else fails, `node main.js`. Put environment variables in front. In development, you might do something like:
 
-`HRPG_USER_ID="123-456-789" HRPG_API_TOKEN="123-456-789" DEBUG_MODE=1 ./main.js` (that's what I usually do)
+BETA_MODE=1 DEBUG_MODE=1 ./main.js` (that's what I usually do)
+
+For development, `[auth-dev]` is used if in `.habitrpgrc`, but `[auth-beta]` is not supported because the beta server uses the same DB as the live one.
 
 Environment variables
 ---------------------
@@ -36,6 +48,7 @@ These generally override anything else the app would try to find out.
 
 Roadmap
 =======
+My next goal is to ignore recurring tasks. And maybe to complete tasks in Habit when they have been completed on the remote end.
 
 I hope this kind of functionality makes it into HabitRPG itself. This is intended as a stopgap, but if people like it, maybe I'll work on it more. Maybe. Civilized requests will get infinitely more attention than entitled flaming.
 
