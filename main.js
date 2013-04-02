@@ -287,7 +287,10 @@ function rtmContinue(habitapi, rtmapi, authToken) {
             console.log('Skipping existing task: ' + taskseries.name);
           } else {
             if (!process.env.DRY_RUN) {
-              habitapi.addTask('todo', taskseries.name, {hts_external_id: taskseries.id, hts_external_source: TODO_SOURCE_RTM});
+              habitapi.addTask('todo', taskseries.name, {hts_external_id: taskseries.id, hts_external_source: TODO_SOURCE_RTM}, function(newTask) {
+                habitTaskMap[TODO_SOURCE_RTM] = habitTaskMap[TODO_SOURCE_RTM] || {};
+                habitTaskMap[TODO_SOURCE_RTM][taskseries.id] = habitTaskMap[TODO_SOURCE_RTM][taskseries.id] || newTask;
+              });
             } else {
               console.log('Dry run summary: Would add "' + taskseries.name + '". The API would tell us something like:' + "\n\n" +
                           util.inspect({
@@ -313,9 +316,12 @@ function rtmContinue(habitapi, rtmapi, authToken) {
               if (habitTaskMap && habitTaskMap[TODO_SOURCE_RTM] && habitTaskMap[TODO_SOURCE_RTM][taskseries.id]) {
                 console.log('Deleting task: ' + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].text);
                 if (!process.env.DRY_RUN) {
-                  habitapi.deleteTask(habitTaskMap[TODO_SOURCE_RTM][taskseries.id].id);
-                }
+                  habitapi.deleteTask(habitTaskMap[TODO_SOURCE_RTM][taskseries.id].id, function() {
+                    habitTaskMap[TODO_SOURCE_RTM][taskseries.id] = undefined;
+                  });
+                } else {
                 console.log('Dry run, so not really deleting. Would delete Habit task ' + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].id + ', called ' + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].text);
+                }
               } else {
                 console.log("We have no record of task " + taskseries.id + ', so doing nothing.');
               }
