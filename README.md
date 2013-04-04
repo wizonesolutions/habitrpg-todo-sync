@@ -31,7 +31,7 @@ Put environment variables in front if you want to use them.
 
 In development, you might do something like:
 
-DEV_MODE=1 DEBUG_MODE=1 habitsync` (that's what I usually do)
+`DEV_MODE=1 DEBUG_MODE=1 habitsync` (that's what I usually do)
 
 The first time you run, the app will help you get authenticated with both services. You need accounts on both, of course.
 
