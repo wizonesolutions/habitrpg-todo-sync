@@ -12,13 +12,13 @@ var parser = new iniReader.IniReader(),
   http = require('http'),
   https = require('https'),
   zlib = require('zlib'),
-  RtmNode = require('rtmnode'),
+  RtmNode = require('./lib/rtmnode'),
   prompt = require('prompt'),
   request = require('superagent'),
   url = require('url'),
   util = require('util'),
   moment = require('moment'),
-  HabitRpg = require('node-habit'),
+  HabitRpg = require('./lib/node-habit'),
   _ = require('underscore');
 
 var hrpgConfigPath = path.resolve(path.join(process.env.HOME, '.habitrpgrc'));

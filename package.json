@@ -1,6 +1,6 @@
 {
   "name": "habitrpg-todo-sync",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Two-way sync between task managers (e.g. Remember the Milk) and HabitRPG",
   "preferGlobal": "true",
   "main": "main.js",
