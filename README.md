@@ -19,16 +19,19 @@ So it's not a true two-way synchronization yet, but it does the job and lets you
 
 Installation
 ============
+Easiest: `npm install -g habitrpg-todo-sync`
 
-Clone the repo and run `npm install`, `chmod +x main.js`, then `./main.js`. That works at least.
+For development: Clone the repo and run `npm install && npm link`
 
 Usage
 =====
-`./main.js`
+`habitsync`
 
-If all else fails, `node main.js`. Put environment variables in front. In development, you might do something like:
+Put environment variables in front if you want to use them.
 
-BETA_MODE=1 DEBUG_MODE=1 ./main.js` (that's what I usually do)
+In development, you might do something like:
+
+DEV_MODE=1 DEBUG_MODE=1 habitsync` (that's what I usually do)
 
 The first time you run, the app will help you get authenticated with both services. You need accounts on both, of course.
 
