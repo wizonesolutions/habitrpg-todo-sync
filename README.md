@@ -25,35 +25,40 @@ For development: Clone the repo and run `npm install && npm link`
 
 Usage
 =====
-`habitsync`
-
-Put environment variables in front if you want to use them.
-
-In development, you might do something like:
-
-`DEV_MODE=1 DEBUG_MODE=1 habitsync` (that's what I usually do)
+`habitsync` (`habitrpg-todo-sync` also works now)
 
 The first time you run, the app will help you get authenticated with both services. You need accounts on both, of course.
 
 For development, `[auth-dev]` is used if in `.habitrpgrc`, but `[auth-beta]` is not supported because the beta server uses the same DB as the live one.
 
-Environment variables
+Command-line Options (courtesy of the Node.js module optimist!)
 ---------------------
 These generally override anything else the app would try to find out.
 
-- `HRPG_USER_ID`: Set the `x-api-user` instead of getting it from `.habitrpgrc` — *good for development*
-- `HRPG_API_TOKEN`: Set the `x-api-key` instead of getting it from `.habitrpgrc` — *good for development*
-- `DEBUG_MODE`: Set to `1` to show more verbose output. Also currently works with the `node-habit` and `rtmnode` modules bundled in `node_modules`, though I might take it out when I release them separately. - *good for development*
-- `DEV_MODE`: Set to `1` to use `http://localhost:3000` instead of `https://habitrpg.com`
-- `BETA_MODE`: Set to `1` to use `https://beta.habitrpg.com` instead of `https://habitrpg.com`. Note that `DEBUG_MODE` is stronger than this.
-- `DRY_RUN`: Set to any truthy value. Don't do any mutative (is that a word?) API operations. Still performs read-only operations. **Note that dry run mode still goes through the authentication sequence for Remember the Milk and writes your credentials to a file. It would be fairly useless if it didn't do this.** It does not write the marker file for last sync, since this would actually change behavior on the next run.
-- `FULL_SYNC`: Set to `1` to sync **all** Remember the Milk tasks instead of just those added within the last week. It goes without saying that this may take a while.
-- `FORCE`: Run non-interactively. Simply setting this (even `FORCE=`) is enough. *Try to avoid doing this. The prompts are in there for a good reason.*
-- `FROB`: ...internal use only, implementation detail etc. etc.. Basically, if the app gives you an auth URL and you exit out of the app before it authenticates you, but you authorize it on the RTM side, you can copy the `frob` from the query string and provide it on the command line. This will skip getting a new one from the API.
+In development, you might do something like:
+
+`habitsync --dev -v` (that's what I usually do)
+
+Options:
+
+- `-u, --user-id`: Set the `x-api-user` instead of getting it from `.habitrpgrc` — *good for development*
+- `-p, --api-key`: Set the `x-api-key` instead of getting it from `.habitrpgrc` — *good for development*
+- `-v, --debug, --verbose`: Show more verbose output. Also currently works with the `node-habit` and `rtmnode` modules bundled in `node_modules`, though I might take it out when I release them separately. - *good for development*
+- `--dev`: Use `http://localhost:3000` instead of `https://habitrpg.com`
+- `--beta`: Use `https://beta.habitrpg.com` instead of `https://habitrpg.com`. Note that `--dev` is stronger than this.
+- `-n, --dry-run`: Don't do any mutative (is that a word?) API operations. Still performs read-only operations. **Note that dry run mode still goes through the authentication sequence for Remember the Milk and writes your credentials to a file. It would be fairly useless if it didn't do this.** It does not write the marker file for last sync, since this would actually change behavior on the next run.
+- `-a, --full-sync`: Sync **all** Remember the Milk tasks instead of just those added within the last week. It goes without saying that this may take a while (but I said it anyway).
+- `-f, --force`: Run non-interactively. Simply setting this (even `FORCE=`) is enough. *Try to avoid doing this. The prompts are in there for a good reason.*
+- `--frob`: ...internal use only, implementation detail etc. etc.. Basically, if the app gives you an auth URL and you exit out of the app before it authenticates you, but you authorize it on the RTM side, you can copy the `frob` from the query string and provide it on the command line. This will skip getting a new one from the API.
 
 Roadmap
 =======
-My next goal is to ignore recurring tasks. And maybe to complete tasks in Habit when they have been completed on the remote end.
+Originally, my next goals were:
+
+- Ignore recurring tasks.
+- Complete tasks in Habit when they have been completed on the remote end.
+
+...but actually these don't bother me much, so the roadmap is going to be more organic.
 
 I hope this kind of functionality makes it into HabitRPG itself. This is intended as a stopgap, but if people like it, maybe I'll work on it more. Maybe. Civilized requests will get infinitely more attention than entitled flaming.
 

@@ -1,17 +1,21 @@
 {
   "name": "habitrpg-todo-sync",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Two-way sync between task managers (e.g. Remember the Milk) and HabitRPG",
   "preferGlobal": "true",
   "main": "main.js",
-  "bin": { "habitsync": "main.js" },
+  "bin": {
+    "habitsync": "main.js",
+    "habitrpg-todo-sync": "main.js"
+  },
   "dependencies": {
     "inireader": "~0.3.1",
     "prompt": "~0.2.9",
     "underscore": "~1.4.4",
     "superagent": "~0.13.0",
     "MD5": "~1.0.3",
-    "moment": "~2.0.0"
+    "moment": "~2.0.0",
+    "optimist": "~0.3.7"
   },
   "engines": {
     "node": "*"

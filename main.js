@@ -11,7 +11,6 @@ var parser = new iniReader.IniReader(),
   path = require('path'),
   http = require('http'),
   https = require('https'),
-  zlib = require('zlib'),
   RtmNode = require('./lib/rtmnode'),
   prompt = require('prompt'),
   request = require('superagent'),
@@ -19,13 +18,24 @@ var parser = new iniReader.IniReader(),
   util = require('util'),
   moment = require('moment'),
   HabitRpg = require('./lib/node-habit'),
-  _ = require('underscore');
+  _ = require('underscore'),
+  // TODO: Implement .usage() and whatnot
+  argv = require('optimist')
+    .alias('f', 'force')
+    // TODO: Support repeating --debug for regular-verbose (essential API requests/responses) and super-verbose (all kinds of stuff, kinda like now) output.
+    .alias('debug', 'verbose')
+    .alias('debug', 'v')
+    .alias('a', 'full-sync')
+    .alias('u', 'user-id')
+    .alias('p', 'api-key')
+    .alias('n', 'dry-run')
+    .argv;
 
 var hrpgConfigPath = path.resolve(path.join(process.env.HOME, '.habitrpgrc'));
 
-var debugMode = process.env.DEBUG_MODE == "1" ? true : false;
-var devServer = process.env.DEV_MODE == "1" ? true : false;
-var betaServer = process.env.BETA_MODE == "1" ? true : false;
+var debugMode = argv.debug ? true : false;
+var devServer = argv.dev ? true : false;
+var betaServer = argv.beta ? true : false;
 var mode = debugMode ? "on" : "off";
 
 var requestStuff = {
@@ -37,7 +47,9 @@ var requestStuff = {
 
 var habitResponse;
 
-if (process.env.FORCE === undefined) {
+var startTime = moment();
+
+if (!argv.f) {
   prompt.start();
 
   var properties = [
@@ -49,11 +61,13 @@ if (process.env.FORCE === undefined) {
 
   console.log("You are about to synchronize tasks between HabitRPG and Remember the Milk.\n\n" +
 
-    (process.env.FULL_SYNC == "1" ? "*** YOU HAVE REQUESTED A FULL SYNC OF ALL TASKS. ***\n\n" : "") +
+    (argv.a ? "*** YOU HAVE REQUESTED A FULL SYNC OF ALL TASKS. ***\n\n" : "") +
 
     "Debugging output: " + mode + "\n" +
     "Server: " + requestStuff.host + "\n" +
     "Port: " + requestStuff.port + "\n\n" +
+
+    (argv.n ? "*** This is a dry run. No data will be saved to HabitRPG or Remember the Milk. ***\n\n" : "") +
 
     "If this is OK with you, type the word yes in full");
   prompt.get(properties, function(err, result) {
@@ -71,13 +85,11 @@ function startSync() {
 
   var hrpgAuth = {};
   if (fs.existsSync(hrpgConfigPath)) {
-    // TODO: If we set HRPG_USER_ID and HRPG_API_TOKEN in the environment, skip
-    // the INI parsing. Useful for dev mode or multiple accounts.
-    if (process.env.HRPG_USER_ID && process.env.HRPG_API_TOKEN) {
+    if (argv.u && argv.p) {
       console.log("Using HabitRPG credentials from the environment instead of reading ~/.habitrpgrc.");
       hrpgAuth = {
-        user_id: process.env.HRPG_USER_ID,
-        api_token: process.env.HRPG_API_TOKEN
+        user_id: argv.u,
+        api_token: argv.p
       };
     } else {
       ////// START HABIT //////
@@ -123,7 +135,7 @@ function startSync() {
           if (debugMode) {
             console.log("Massaged response from HabitRPG: " + util.inspect(habitResponse));
           }
-          console.log("Let's grab the Remember the Milk tasks now. We'll restrict it to those created within the last week for now. First, we have to make sure we're authenticated...");
+          console.log("We're ready to sync with Remember the Milk. First, we have to make sure we're still authenticated...");
           ///// START RTM //////
 
           // If we have the token, then first just grab all the tasks in their Inbox.
@@ -184,8 +196,8 @@ function authorizeRtm(habitapi, initialRtmApi) {
   // Looks like the first thing I need is a frob. Uhh...oh wait, I need a way to call methods! I'll just do it straight up in the class to start and refactor later, maybe.
   existingFrob = undefined;
   skipSiteAuth = false;
-  if (process.env.FROB !== undefined) {
-    existingFrob = process.env.FROB;
+  if (argv.frob !== undefined) {
+    existingFrob = argv.frob;
     skipSiteAuth = true;
   }
 
@@ -242,7 +254,7 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
     filter = 'status:incomplete AND addedWithin:"1 week of today"';
 
     // For the brave
-    if (process.env.FULL_SYNC == "1") {
+    if (argv.a) {
       filter = 'status:incomplete';
       lastSync = undefined;
     } else {
@@ -254,25 +266,25 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
       }
     }
 
-    if (lastSync === undefined && process.env.FULL_SYNC === undefined) {
+    if (lastSync === undefined && !argv.a) {
       console.log("This is the first run. A full sync was not requested, so we are getting tasks added within the last week.");
-    } else if (lastSync === undefined && process.env.FULL_SYNC == "1") {
+    } else if (lastSync === undefined && argv.a) {
       console.log("Doing a full sync!");
     } else {
       console.log('We last synchronized on ' + lastSync);
     }
 
     if (filter) {
-      console.log("We are filtering tasks with the following criteria: " + filter);
+      console.log("We are filtering tasks with the following search criteria: " + filter);
     }
     else {
-      console.log("We are not filtering tasks: " + filter);
+      console.log("We are not filtering tasks.");
     }
     // For additional fun and profit (JUST KIDDING REMEMBER THE MILK; IT'S
     // STRICTLY ONLY FOR FUN), let's massage the Habit task data a little bit.
     var habitTaskMap = massageHabitTodos(habitResponse);
 
-    if (!process.env.DRY_RUN) {
+    if (!argv.n) {
       // TODO: Abstract path to this file. Quit duplicating code.
       // TODO: Roll back to the file's original time if something goes wrong.
       // OR: Emit an event when all the adding and deleting has finished, and only write the file then.
@@ -311,7 +323,7 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
             if (habitTaskMap && habitTaskMap[TODO_SOURCE_RTM] && habitTaskMap[TODO_SOURCE_RTM][taskseries.id]) {
               console.log('Skipping existing task: ' + taskseries.name);
             } else {
-              if (!process.env.DRY_RUN) {
+              if (!argv.n) {
                 habitapi.addTask('todo', taskseries.name, {
                   hts_external_id: taskseries.id,
                   hts_external_source: TODO_SOURCE_RTM,
@@ -356,8 +368,9 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
                 // This comment left way too late at night
                 if (habitTaskMap && habitTaskMap[TODO_SOURCE_RTM] && habitTaskMap[TODO_SOURCE_RTM][taskseries.id]) {
                   console.log('Deleting task: ' + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].text);
-                  if (!process.env.DRY_RUN) {
+                  if (!argv.n) {
                     habitapi.deleteTask(habitTaskMap[TODO_SOURCE_RTM][taskseries.id].id, function() {
+                      console.log("Deleted " + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].text)
                       habitTaskMap[TODO_SOURCE_RTM][taskseries.id] = undefined;
                     });
                   } else {
@@ -391,8 +404,10 @@ function processHabitTodos(habitTaskMap, habitapi, rtmapi) {
       // Any falsy value is OK, hence no ===
       if (task.hts_last_known_state == HRPG_INCOMPLETE && task.completed) {
         // Complete on RTM side. We do this blindly. It's OK.
-        if (!(process.env.DRY_RUN == "1")) {
-          rtmapi.completeTask(task.hts_external_rtm_list_id, task.hts_external_id, task.hts_external_rtm_task_id);
+        if (!argv.n) {
+          rtmapi.completeTask(task.hts_external_rtm_list_id, task.hts_external_id, task.hts_external_rtm_task_id, undefined, function() {
+            console.log("Completed " + task.text + " in Remebmer the Milk. Good job!");
+          });
           task.hts_last_known_state = HRPG_COMPLETE;
           habitapi.putTask(task);
         }
