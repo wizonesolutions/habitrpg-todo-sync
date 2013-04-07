@@ -23,17 +23,21 @@ var parser = new iniReader.IniReader(),
   argv = require('optimist')
     .alias('f', 'force')
     // TODO: Support repeating --debug for regular-verbose (essential API requests/responses) and super-verbose (all kinds of stuff, kinda like now) output.
+    // Optimist can' do bo
     .alias('debug', 'verbose')
     .alias('debug', 'v')
     .alias('a', 'full-sync')
     .alias('u', 'user-id')
     .alias('p', 'api-key')
     .alias('n', 'dry-run')
+    .alias('dev', 'D')
+    .alias('beta', 'B')
     .argv;
 
 var hrpgConfigPath = path.resolve(path.join(process.env.HOME, '.habitrpgrc'));
 
 var debugMode = argv.debug ? true : false;
+var verboser = debugMode && argv.debug == "debug" || argv.debug == "2" ? true : false;
 var devServer = argv.dev ? true : false;
 var betaServer = argv.beta ? true : false;
 var mode = debugMode ? "on" : "off";
@@ -132,7 +136,7 @@ function startSync() {
 
           console.log('Finished getting HabitRPG tasks.');
 
-          if (debugMode) {
+          if (debugMode && verboser) {
             console.log("Massaged response from HabitRPG: " + util.inspect(habitResponse));
           }
           console.log("We're ready to sync with Remember the Milk. First, we have to make sure we're still authenticated...");
@@ -153,7 +157,8 @@ function startSync() {
           tempRtmCreds.authToken = "";
           // TODO: Check for a stored auth token. Do the following if we don't have it.
           if (fs.existsSync(path.join(process.env.HOME, '.htsrtmtoken.json'))) {
-            tempRtmCreds.authToken = fs.readFileSync(path.join(process.env.HOME, '.htsrtmtoken.json')).toString();
+            pathToToken = path.join(process.env.HOME, '.htsrtmtoken.json');
+            tempRtmCreds.authToken = fs.readFileSync(pathToToken).toString();
           }
 
           if (tempRtmCreds.authToken) {
@@ -249,6 +254,10 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
   initialRtmApi.on('RtmNodeReady', function(rtmapi) {
     console.log("Alright, we're all good on the authentication front. Let's continue grabbing those tasks.");
 
+    var prodPath = path.join(process.env.HOME, '.htsrtmlastsync');
+    var devPath = path.join(process.env.HOME, '.htsrtmlastsync-dev');
+    var rightPath = argv.debug ? devPath : prodPath;
+
     // TODO: Test that lastSync works when there is no file
     lastSync = undefined;
     filter = 'status:incomplete AND addedWithin:"1 week of today"';
@@ -260,8 +269,8 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
     } else {
       // Figure out when we last synced.
       // TODO: Try combining this stuff floating around into one file. Either .habitrpgrc or my own.
-      if (fs.existsSync(path.join(process.env.HOME, '.htsrtmlastsync'))) {
-        lastSync = fs.readFileSync(path.join(process.env.HOME, '.htsrtmlastsync')).toString();
+      if ((!argv.debug && fs.existsSync(prodPath)) || (argv.debug && fs.existsSync(devPath))) {
+        lastSync = fs.readFileSync(rightPath).toString();
         filter = undefined; // filter messes us up if we actually have a last_sync.
       }
     }
@@ -288,7 +297,7 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
       // TODO: Abstract path to this file. Quit duplicating code.
       // TODO: Roll back to the file's original time if something goes wrong.
       // OR: Emit an event when all the adding and deleting has finished, and only write the file then.
-      fs.writeFileSync(path.join(process.env.HOME, '.htsrtmlastsync'), moment().format());
+      fs.writeFileSync(rightPath, startTime.format());
     } else {
       console.log("DRY RUN: Not writing lastSync time to file.");
     }
@@ -314,7 +323,7 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
           list.taskseries = moo(list.taskseries);
 
           list.taskseries.every(function(taskseries) {
-            if (debugMode) {
+            if (debugMode && verboser) {
               console.log('Debug output for this taskseries: ' + util.inspect(taskseries));
             }
             // Don't add completed tasks.
@@ -369,9 +378,16 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
                 if (habitTaskMap && habitTaskMap[TODO_SOURCE_RTM] && habitTaskMap[TODO_SOURCE_RTM][taskseries.id]) {
                   console.log('Deleting task: ' + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].text);
                   if (!argv.n) {
-                    habitapi.deleteTask(habitTaskMap[TODO_SOURCE_RTM][taskseries.id].id, function() {
-                      console.log("Deleted " + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].text)
-                      habitTaskMap[TODO_SOURCE_RTM][taskseries.id] = undefined;
+                    habitapi.deleteTask(habitTaskMap[TODO_SOURCE_RTM][taskseries.id].id, function(err, response) {
+                      if (!err) {
+                        console.log("Deleted " + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].text)
+                        habitTaskMap[TODO_SOURCE_RTM][taskseries.id] = undefined;
+                      }
+                      else {
+                        console.log("Had a problem deleting " + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].text + ". Will try again next time. If the problem persists, file a bug report at https://github.com/wizonesolutions/habitrpg-todo-sync/issues. It might be temporary though.");
+                        // Reset the lastSync time so it will try the delete again next time
+                        fs.writeFileSync(rightPath, lastSync);
+                      }
                     });
                   } else {
                   console.log('Dry run, so not really deleting. Would delete Habit task ' + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].id + ', called ' + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].text);
@@ -406,10 +422,10 @@ function processHabitTodos(habitTaskMap, habitapi, rtmapi) {
         // Complete on RTM side. We do this blindly. It's OK.
         if (!argv.n) {
           rtmapi.completeTask(task.hts_external_rtm_list_id, task.hts_external_id, task.hts_external_rtm_task_id, undefined, function() {
-            console.log("Completed " + task.text + " in Remebmer the Milk. Good job!");
+            task.hts_last_known_state = HRPG_COMPLETE;
+            habitapi.putTask(task);
+            console.log("Completed " + task.text + " in Remember the Milk. Good job!");
           });
-          task.hts_last_known_state = HRPG_COMPLETE;
-          habitapi.putTask(task);
         }
         else {
           console.log("Would complete list " + task.hts_external_rtm_list_id + ', taskseries ' + task.hts_external_id + ', ' + task.hts_external_rtm_task_id);
@@ -418,7 +434,9 @@ function processHabitTodos(habitTaskMap, habitapi, rtmapi) {
       }
       else {
         if (debugMode) {
-          console.log('[HabitRPG] ' + task.text + ' still has the same status (' + (task.hts_last_known_state == HRPG_INCOMPLETE ? 'incomplete' : 'complete') + '), so doing nothing.');
+          if (verboser) {
+            console.log('[HabitRPG] ' + task.text + ' still has the same status (' + (task.hts_last_known_state == HRPG_INCOMPLETE ? 'incomplete' : 'complete') + '), so doing nothing.');
+          }
         }
       }
     });
