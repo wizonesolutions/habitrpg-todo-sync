@@ -424,7 +424,9 @@ function processHabitTodos(habitTaskMap, habitapi, rtmapi) {
           rtmapi.completeTask(task.hts_external_rtm_list_id, task.hts_external_id, task.hts_external_rtm_task_id, undefined, function(err, rtmTask) {
             var harmlessError = false;
             if (err) {
-              console.log("err looks like: " + util.inspect(err));
+              if (argv.debug) {
+                console.log("err looks like: " + util.inspect(err));
+              }
               if (err.rsp.err.code == "340") {
                 harmlessError = true;
                 console.log("Remember the Milk said it doesn't know about " + task.hts_external_rtm_list_id + "."  + task.hts_external_id + "." + task.hts_external_rtm_task_id + ". That's fine. We'll just update this task on our side so this doesn't happen again.");
