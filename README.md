@@ -41,14 +41,15 @@ In development, you might do something like:
 
 Options:
 
-- `-u, --user-id`: Set the `x-api-user` instead of getting it from `.habitrpgrc` — *good for development*
-- `-p, --api-key`: Set the `x-api-key` instead of getting it from `.habitrpgrc` — *good for development*
-- `-v, --debug, --verbose`: Show more verbose output. Also currently works with the `node-habit` and `rtmnode` modules bundled in `node_modules`, though I might take it out when I release them separately. - *good for development*
-- `--dev`: Use `http://localhost:3000` instead of `https://habitrpg.com`
+- `-q, --silence, --SILENCE`: Run silently, except for errors. Intended for use with `cron` so that it doesn't mail you every time (unless you want it to). For extra fun, use `habitsync --force --SILENCE`. Fun to type, but useless since **-q implies -f**.
+- `-f, --force`: Run non-interactively. Simply setting this (even `FORCE=`) is enough. *Try to avoid doing this. The prompts are in there for a good reason.*
 - `--beta`: Use `https://beta.habitrpg.com` instead of `https://habitrpg.com`. Note that `--dev` is stronger than this.
 - `-n, --dry-run`: Don't do any mutative (is that a word?) API operations. Still performs read-only operations. **Note that dry run mode still goes through the authentication sequence for Remember the Milk and writes your credentials to a file. It would be fairly useless if it didn't do this.** It does not write the marker file for last sync, since this would actually change behavior on the next run.
+- `-v, --debug, --verbose`: Show more verbose output. Also currently works with the `node-habit` and `rtmnode` modules bundled in `node_modules`, though I might take it out when I release them separately. - *good for development*
+- `--dev`: Use `http://localhost:3000` instead of `https://habitrpg.com`
 - `-a, --full-sync`: Sync **all** Remember the Milk tasks instead of just those added within the last week. It goes without saying that this may take a while (but I said it anyway).
-- `-f, --force`: Run non-interactively. Simply setting this (even `FORCE=`) is enough. *Try to avoid doing this. The prompts are in there for a good reason.*
+- `-u, --user-id`: Set the `x-api-user` instead of getting it from `.habitrpgrc` — *good for development*
+- `-p, --api-key`: Set the `x-api-key` instead of getting it from `.habitrpgrc` — *good for development*
 - `--frob`: ...internal use only, implementation detail etc. etc.. Basically, if the app gives you an auth URL and you exit out of the app before it authenticates you, but you authorize it on the RTM side, you can copy the `frob` from the query string and provide it on the command line. This will skip getting a new one from the API.
 
 Roadmap
