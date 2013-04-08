@@ -24,7 +24,7 @@ var parser = new iniReader.IniReader(),
     .alias('f', 'force')
     // TODO: Support repeating --debug for regular-verbose (essential API requests/responses) and super-verbose (all kinds of stuff, kinda like now) output.
     // Optimist can' do bo
-    .alias('debug', 'verbose')
+    .alias('debug', 'verbose') // Implies NOT quiet
     .alias('debug', 'v')
     .alias('a', 'full-sync')
     .alias('u', 'user-id')
@@ -32,7 +32,19 @@ var parser = new iniReader.IniReader(),
     .alias('n', 'dry-run')
     .alias('dev', 'D')
     .alias('beta', 'B')
+    .alias('q', 'silence') // Implies force
+    .alias('q', 'SILENCE')
+    .alias('q', 'quiet')
     .argv;
+
+if (argv.debug) {
+  argv.q = false;
+}
+
+if (argv.q) {
+  // Quiet means force.
+  argv.f = true;
+}
 
 var hrpgConfigPath = path.resolve(path.join(process.env.HOME, '.habitrpgrc'));
 
@@ -85,12 +97,16 @@ if (!argv.f) {
 }
 
 function startSync() {
-  console.log('Now syncing with ' + requestStuff.host + '...');
+  if (!argv.q) {
+    console.log('Now syncing with ' + requestStuff.host + '...');
+  }
 
   var hrpgAuth = {};
   if (fs.existsSync(hrpgConfigPath)) {
     if (argv.u && argv.p) {
-      console.log("Using HabitRPG credentials from the environment instead of reading ~/.habitrpgrc.");
+      if (!argv.q) {
+        console.log("Using HabitRPG credentials from the environment instead of reading ~/.habitrpgrc.");
+      }
       hrpgAuth = {
         user_id: argv.u,
         api_token: argv.p
@@ -104,7 +120,9 @@ function startSync() {
 
       // Which keys should we read?
       if (devServer) {
-        console.log('Using [auth-dev] settings from ' + hrpgConfigPath);
+        if (!argv.q) {
+          console.log('Using [auth-dev] settings from ' + hrpgConfigPath);
+        }
         userIdParam = "auth-dev.user_id";
         apiTokenParam = "auth-dev.api_token";
       }
@@ -134,12 +152,17 @@ function startSync() {
 
           habitResponse = moo(res.text); // I don't think Habit does this, but just in case. Also, I like calling moo().
 
-          console.log('Finished getting HabitRPG tasks.');
+          if (!argv.q) {
+            console.log('Finished getting HabitRPG tasks.');
+          }
 
           if (debugMode && verboser) {
             console.log("Massaged response from HabitRPG: " + util.inspect(habitResponse));
           }
-          console.log("We're ready to sync with Remember the Milk. First, we have to make sure we're still authenticated...");
+
+          if (!argv.q) {
+            console.log("We're ready to sync with Remember the Milk. First, we have to make sure we're still authenticated...");
+          }
           ///// START RTM //////
 
           // If we have the token, then first just grab all the tasks in their Inbox.
@@ -167,7 +190,13 @@ function startSync() {
               if (result) {
                 rtmContinue(habitapi, initialRtmApi, tempRtmCreds.authToken);
               } else {
-                console.log("ACTION NEEDED: Looks like our authorization has expired. This happens sometimes; no big deal. I'm going to take you through the authentication process again now.");
+                if (!argv.f) {
+                  console.log("ACTION NEEDED: Looks like our authorization has expired. This happens sometimes; no big deal. I'm going to take you through the authentication process again now.");
+                }
+                else {
+                  console.log("HabitRPG Todo Synchronization exited because you weren't authenticated with Remember the Milk. Please run it manually and get set up.");
+                  return;
+                }
                 authorizeRtm(habitapi, initialRtmApi);
               }
             });
@@ -207,7 +236,9 @@ function authorizeRtm(habitapi, initialRtmApi) {
   }
 
   if (!skipSiteAuth) {
-    console.log('Existing frob: ' + existingFrob);
+    if (argv.debug) {
+      console.log('Existing frob: ' + existingFrob);
+    }
     // TODO: Don't need existingFrob anymore. It was to avoid branching here.
     // Now I have, so kill it some itme.
     initialRtmApi.getFrob(existingFrob, function(theFrob) {
@@ -227,7 +258,9 @@ function authorizeRtm(habitapi, initialRtmApi) {
       });
     });
   } else {
-    console.log("WARNING: Skipping site authentication due to frob being provided on command line. This might send you into a callback loop. Press Ctrl+C if that happens.");
+    if (!argv.q) {
+      console.log("WARNING: Skipping site authentication due to frob being provided on command line. This might send you into a callback loop. Press Ctrl+C if that happens.");
+    }
     onReturnFromRtmSite(habitapi, initialRtmApi, existingFrob);
   }
 }
@@ -242,7 +275,9 @@ function onReturnFromRtmSite(habitapi, initialRtmApi, theFrob) {
     }
 
     // Save the auth token, yeah?
-    console.log("Saving your auth token so you won't have to do this again for a while...");
+    if (!argv.q) {
+      console.log("Saving your auth token so you won't have to do this again for a while...");
+    }
     fs.writeFileSync(path.join(process.env.HOME, '.htsrtmtoken.json'), authToken);
     rtmContinue(habitapi, initialRtmApi, authToken);
   });
@@ -252,7 +287,9 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
   initialRtmApi.setAuthToken(authToken);
   initialRtmApi.initializeTimeline();
   initialRtmApi.on('RtmNodeReady', function(rtmapi) {
-    console.log("Alright, we're all good on the authentication front. Let's continue grabbing those tasks.");
+    if (!argv.q) {
+      console.log("Alright, we're all good on the authentication front. Let's continue grabbing those tasks.");
+    }
 
     var prodPath = path.join(process.env.HOME, '.htsrtmlastsync');
     var devPath = path.join(process.env.HOME, '.htsrtmlastsync-dev');
@@ -276,18 +313,28 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
     }
 
     if (lastSync === undefined && !argv.a) {
-      console.log("This is the first run. A full sync was not requested, so we are getting tasks added within the last week.");
+      if (!argv.q) {
+        console.log("This is the first run. A full sync was not requested, so we are getting tasks added within the last week.");
+      }
     } else if (lastSync === undefined && argv.a) {
-      console.log("Doing a full sync!");
+      if (!argv.q) {
+        console.log("Doing a full sync!");
+      }
     } else {
-      console.log('We last synchronized on ' + lastSync);
+      if (!argv.q) {
+        console.log('We last synchronized on ' + lastSync);
+      }
     }
 
     if (filter) {
-      console.log("We are filtering tasks with the following search criteria: " + filter);
+      if (!argv.q) {
+        console.log("We are filtering tasks with the following search criteria: " + filter);
+      }
     }
     else {
-      console.log("We are not filtering tasks.");
+      if (!argv.q) {
+        console.log("We are not filtering tasks.");
+      }
     }
     // For additional fun and profit (JUST KIDDING REMEMBER THE MILK; IT'S
     // STRICTLY ONLY FOR FUN), let's massage the Habit task data a little bit.
@@ -299,7 +346,9 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
       // OR: Emit an event when all the adding and deleting has finished, and only write the file then.
       fs.writeFileSync(rightPath, startTime.format());
     } else {
-      console.log("DRY RUN: Not writing lastSync time to file.");
+      if (!argv.q) {
+        console.log("DRY RUN: Not writing lastSync time to file.");
+      }
     }
 
     rtmapi.getTasks(undefined, filter, lastSync, function(response) {
@@ -330,7 +379,9 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
             if (taskseries === undefined || (taskseries && taskseries.task && taskseries.task.completed)) { return true; }
             // Add it.
             if (habitTaskMap && habitTaskMap[TODO_SOURCE_RTM] && habitTaskMap[TODO_SOURCE_RTM][taskseries.id]) {
-              console.log('Skipping existing task: ' + taskseries.name);
+              if (!argv.q) {
+                console.log('Skipping existing task: ' + taskseries.name);
+              }
             } else {
               if (!argv.n) {
                 habitapi.addTask('todo', taskseries.name, {
@@ -347,22 +398,26 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
                   habitTaskMap[TODO_SOURCE_RTM][taskseries.id] = habitTaskMap[TODO_SOURCE_RTM][taskseries.id] || newTask;
                 });
               } else {
-                console.log('Dry run summary: Would add "' + taskseries.name + '". The API would tell us something like:' + "\n\n" +
-                            util.inspect({
-                              type: "todo",
-                              text: taskseries.name,
-                              hts_external_id: taskseries.id,
-                              hts_external_source: TODO_SOURCE_RTM,
-                              hts_external_rtm_list_id: list.id,
-                              hts_external_rtm_task_id: taskseries.task.id,
-                              hts_last_known_state: HRPG_INCOMPLETE,
-                              completed: false,
-                              id: "not available in dry run mode",
-                              value: 0
-                }));
+                if (!argv.q) {
+                  console.log('Dry run summary: Would add "' + taskseries.name + '". The API would tell us something like:' + "\n\n" +
+                    util.inspect({
+                      type: "todo",
+                      text: taskseries.name,
+                      hts_external_id: taskseries.id,
+                      hts_external_source: TODO_SOURCE_RTM,
+                      hts_external_rtm_list_id: list.id,
+                      hts_external_rtm_task_id: taskseries.task.id,
+                      hts_last_known_state: HRPG_INCOMPLETE,
+                      completed: false,
+                      id: "not available in dry run mode",
+                      value: 0
+                    }));
+                }
               }
               tasksAdded++;
-              console.log('Total tasks found so far: ' + tasksAdded);
+              if (argv.debug) {
+                console.log('Total tasks found so far: ' + tasksAdded);
+              }
             }
             return true;
           });
@@ -376,11 +431,15 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
                 // TODO: OMG PUT THIS IN A VARIABLE STOP DUPING A TWO-LEVEL DEEP OBJECT
                 // This comment left way too late at night
                 if (habitTaskMap && habitTaskMap[TODO_SOURCE_RTM] && habitTaskMap[TODO_SOURCE_RTM][taskseries.id]) {
-                  console.log('Deleting task: ' + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].text);
+                  if (!argv.q) {
+                    console.log('Deleting task: ' + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].text);
+                  }
                   if (!argv.n) {
                     habitapi.deleteTask(habitTaskMap[TODO_SOURCE_RTM][taskseries.id].id, function(err, response) {
                       if (!err) {
-                        console.log("Deleted " + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].text)
+                        if (!argv.q) {
+                          console.log("Deleted " + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].text)
+                        }
                         habitTaskMap[TODO_SOURCE_RTM][taskseries.id] = undefined;
                       }
                       else {
@@ -390,10 +449,14 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
                       }
                     });
                   } else {
-                  console.log('Dry run, so not really deleting. Would delete Habit task ' + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].id + ', called ' + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].text);
+                    if (!argv.q) {
+                      console.log('Dry run, so not really deleting. Would delete Habit task ' + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].id + ', called ' + habitTaskMap[TODO_SOURCE_RTM][taskseries.id].text);
+                    }
                   }
                 } else {
-                  console.log("We have no record of task " + taskseries.id + ', so doing nothing.');
+                  if (argv.debug) {
+                    console.log("We have no record of task " + taskseries.id + ', so doing nothing.');
+                  }
                 }
                 return true;
               });
@@ -435,7 +498,9 @@ function processHabitTodos(habitTaskMap, habitapi, rtmapi) {
             if (!err || harmlessError) {
               task.hts_last_known_state = HRPG_COMPLETE;
               habitapi.putTask(task);
-              console.log("Completed \"" + task.text + "\" in Remember the Milk. Good job!");
+              if (!argv.q) {
+                console.log("Completed \"" + task.text + "\" in Remember the Milk. Good job!");
+              }
             }
             else {
               // Do nothing
@@ -443,8 +508,10 @@ function processHabitTodos(habitTaskMap, habitapi, rtmapi) {
           });
         }
         else {
-          console.log("Would complete list " + task.hts_external_rtm_list_id + ', taskseries ' + task.hts_external_id + ', ' + task.hts_external_rtm_task_id);
-          console.log("In HabitRPG, this task is called: " + task.text);
+          if (argv.debug) {
+            console.log("Would complete list " + task.hts_external_rtm_list_id + ', taskseries ' + task.hts_external_id + ', ' + task.hts_external_rtm_task_id);
+            console.log("In HabitRPG, this task is called: " + task.text);
+          }
         }
       }
       else {
