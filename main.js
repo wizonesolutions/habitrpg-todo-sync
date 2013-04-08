@@ -421,10 +421,23 @@ function processHabitTodos(habitTaskMap, habitapi, rtmapi) {
       if (task.hts_last_known_state == HRPG_INCOMPLETE && task.completed) {
         // Complete on RTM side. We do this blindly. It's OK.
         if (!argv.n) {
-          rtmapi.completeTask(task.hts_external_rtm_list_id, task.hts_external_id, task.hts_external_rtm_task_id, undefined, function() {
-            task.hts_last_known_state = HRPG_COMPLETE;
-            habitapi.putTask(task);
-            console.log("Completed " + task.text + " in Remember the Milk. Good job!");
+          rtmapi.completeTask(task.hts_external_rtm_list_id, task.hts_external_id, task.hts_external_rtm_task_id, undefined, function(err, rtmTask) {
+            var harmlessError = false;
+            if (err) {
+              console.log("err looks like: " + util.inspect(err));
+              if (err.rsp.err.code == "340") {
+                harmlessError = true;
+                console.log("Remember the Milk said it doesn't know about " + task.hts_external_rtm_list_id + "."  + task.hts_external_id + "." + task.hts_external_rtm_task_id + ". That's fine. We'll just update this task on our side so this doesn't happen again.");
+              }
+            }
+            if (!err || harmlessError) {
+              task.hts_last_known_state = HRPG_COMPLETE;
+              habitapi.putTask(task);
+              console.log("Completed \"" + task.text + "\" in Remember the Milk. Good job!");
+            }
+            else {
+              // Do nothing
+            }
           });
         }
         else {
