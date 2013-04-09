@@ -309,6 +309,10 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
     // For the brave
     if (argv.a) {
       filter = 'status:incomplete';
+      if (argv.filter) {
+        // OK, so in this case we AND their filter with status:incomplete. That's hardcoded until someone wants to override it.
+        filter = 'status:incomplete AND ' + argv.filter;
+      }
       lastSync = undefined;
     } else {
       // Figure out when we last synced.
@@ -397,12 +401,32 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
               thisTask = habitTaskMap[TODO_SOURCE_RTM][taskseries.id];
 
               // So, has anything changed from what we have?
+              taskSeriesDate = taskseries.task.due;
+              thisTaskDate = thisTask.date;
+
+              var dateTheSame = true;
+
+              if (taskSeriesDate && thisTaskDate) {
+                if (argv.debug) {
+                  console.log(taskseries.name + ": RTM's date is " + taskSeriesDate + " and ours is " + thisTaskDate);
+                }
+                dateTheSame = (moment(thisTask.date).format() == moment(taskseries.task.due).format());
+              }
+              else {
+                dateTheSame = false;
+                if (!taskSeriesDate && !thisTaskDate) {
+                  if (argv.debug) {
+                    console.log(taskseries.name + ": Neither date is set.");
+                  }
+                  dateTheSame = true;
+                }
+              }
 
               // The date? Unset or changed?
-              if ((thisTask.date && !taskseries.task.due) || (moment(thisTask.date, 'MM/DD/YYYY').format() != moment(taskseries.task.due))) {
+              if (!dateTheSame || argv.refresh) {
                 putTask = true;
                 if (taskseries.task.due) {
-                  thisTask.date = moment(taskseries.task.due).format('MM/DD/YYYY');
+                  thisTask.date = moment(taskseries.task.due).format();
                 }
                 else {
                   thisTask.date = '';
@@ -410,7 +434,7 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
               }
 
               // The name?
-              if (thisTask.text != taskseries.name) {
+              if ((thisTask.text != taskseries.name) || argv.refresh) {
                 putTask = true;
                 thisTask.text = taskseries.name;
               }
@@ -444,11 +468,15 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
                   hts_last_known_state: HRPG_INCOMPLETE,
                   up: true,
                   down: false,
-                  value: 0
+                  value: 0,
+                  date: (moment(taskseries.task.due) ? moment(taskseries.task.due).format() : undefined)
                 }, function(err, newTask) {
                   if (!err) {
                     habitTaskMap[TODO_SOURCE_RTM] = habitTaskMap[TODO_SOURCE_RTM] || {};
                     habitTaskMap[TODO_SOURCE_RTM][taskseries.id] = habitTaskMap[TODO_SOURCE_RTM][taskseries.id] || newTask;
+                    if (!argv.q) {
+                      console.log("Added: " + newTask.text);
+                    }
                   }
                   else {
                     console.log("ERROR: We tried to add " + taskseries.name + ", but we had a problem. We'll try again next time.");
@@ -468,7 +496,8 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
                       hts_last_known_state: HRPG_INCOMPLETE,
                       completed: false,
                       id: "not available in dry run mode",
-                      value: 0
+                      value: 0,
+                      date: (moment(taskseries.task.due) ? moment(taskseries.task.due).format() : undefined)
                     }));
                 }
               }
