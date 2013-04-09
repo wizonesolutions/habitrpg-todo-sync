@@ -445,9 +445,15 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
                   up: true,
                   down: false,
                   value: 0
-                }, function(newTask) {
-                  habitTaskMap[TODO_SOURCE_RTM] = habitTaskMap[TODO_SOURCE_RTM] || {};
-                  habitTaskMap[TODO_SOURCE_RTM][taskseries.id] = habitTaskMap[TODO_SOURCE_RTM][taskseries.id] || newTask;
+                }, function(err, newTask) {
+                  if (!err) {
+                    habitTaskMap[TODO_SOURCE_RTM] = habitTaskMap[TODO_SOURCE_RTM] || {};
+                    habitTaskMap[TODO_SOURCE_RTM][taskseries.id] = habitTaskMap[TODO_SOURCE_RTM][taskseries.id] || newTask;
+                  }
+                  else {
+                    console.log("ERROR: We tried to add " + taskseries.name + ", but we had a problem. We'll try again next time.");
+                    fs.writeFileSync(rightPath, lastSync);
+                  }
                 });
               } else {
                 if (!argv.q) {
