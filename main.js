@@ -442,7 +442,7 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
               // TODO: Was it completed?
 
               if (skipTask) {
-                if (!argv.q) {
+                if (argv.debug) {
                   console.log('Skipping existing task: ' + taskseries.name);
                 }
               }
