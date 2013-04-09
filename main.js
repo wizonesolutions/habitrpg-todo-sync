@@ -293,7 +293,7 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
 
     var prodPath = path.join(process.env.HOME, '.htsrtmlastsync');
     var devPath = path.join(process.env.HOME, '.htsrtmlastsync-dev');
-    var rightPath = argv.debug ? devPath : prodPath;
+    var rightPath = argv.dev ? devPath : prodPath;
 
     // TODO: Test that lastSync works when there is no file
     lastSync = undefined;
@@ -306,7 +306,7 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
     } else {
       // Figure out when we last synced.
       // TODO: Try combining this stuff floating around into one file. Either .habitrpgrc or my own.
-      if ((!argv.debug && fs.existsSync(prodPath)) || (argv.debug && fs.existsSync(devPath))) {
+      if ((!argv.dev && fs.existsSync(prodPath)) || (argv.dev && fs.existsSync(devPath))) {
         lastSync = fs.readFileSync(rightPath).toString();
         filter = undefined; // filter messes us up if we actually have a last_sync.
       }
@@ -379,8 +379,48 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
             if (taskseries === undefined || (taskseries && taskseries.task && taskseries.task.completed)) { return true; }
             // Add it.
             if (habitTaskMap && habitTaskMap[TODO_SOURCE_RTM] && habitTaskMap[TODO_SOURCE_RTM][taskseries.id]) {
-              if (!argv.q) {
-                console.log('Skipping existing task: ' + taskseries.name);
+              skipTask = true;
+              putTask = false;
+
+              thisTask = habitTaskMap[TODO_SOURCE_RTM][taskseries.id];
+
+              // So, has anything changed from what we have?
+
+              // The date? Unset or changed?
+              if ((thisTask.date && !taskseries.task.due) || (moment(thisTask.date, 'MM/DD/YYYY').format() != moment(taskseries.task.due))) {
+                putTask = true;
+                if (taskseries.task.due) {
+                  thisTask.date = moment(taskseries.task.due).format('MM/DD/YYYY');
+                }
+                else {
+                  thisTask.date = '';
+                }
+              }
+
+              // The name?
+              if (thisTask.text != taskseries.name) {
+                putTask = true;
+                thisTask.text = taskseries.name;
+              }
+
+              // TODO: Was it completed?
+
+              if (skipTask) {
+                if (!argv.q) {
+                  console.log('Skipping existing task: ' + taskseries.name);
+                }
+              }
+
+              if (putTask) {
+                if (!argv.q) {
+                  console.log('We know about "' + thisTask.text + '", but it was updated in Remember the Milk. Syncing changes.');
+                }
+                habitapi.putTask(thisTask, function(err) {
+                  if (err) {
+                    console.log("ERROR: Saving task to Habit didn't work. We'll try again next time.");
+                    fs.writeFileSync(rightPath, lastSync);
+                  }
+                });
               }
             } else {
               if (!argv.n) {
@@ -421,6 +461,12 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
             }
             return true;
           });
+          return true;
+        });
+        return true;
+      });
+    });
+
           if (list.deleted) {
             list.deleted = moo(list.deleted);
 
