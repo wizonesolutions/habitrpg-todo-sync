@@ -291,13 +291,20 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
       console.log("Alright, we're all good on the authentication front. Let's continue grabbing those tasks.");
     }
 
+    var firstSyncFilter = 'status:incomplete AND addedWithin:"1 week of today"';
     var prodPath = path.join(process.env.HOME, '.htsrtmlastsync');
     var devPath = path.join(process.env.HOME, '.htsrtmlastsync-dev');
     var rightPath = argv.dev ? devPath : prodPath;
 
     // TODO: Test that lastSync works when there is no file
     lastSync = undefined;
-    filter = 'status:incomplete AND addedWithin:"1 week of today"';
+    filter = firstSyncFilter;
+
+    // Something passed on the command line?
+    if (argv.filter) {
+      // OK, so in this case we AND their filter with status:incomplete. That's hardcoded until someone wants to override it.
+      filter = 'status:incomplete AND ' + argv.filter;
+    }
 
     // For the brave
     if (argv.a) {
@@ -308,7 +315,12 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
       // TODO: Try combining this stuff floating around into one file. Either .habitrpgrc or my own.
       if ((!argv.dev && fs.existsSync(prodPath)) || (argv.dev && fs.existsSync(devPath))) {
         lastSync = fs.readFileSync(rightPath).toString();
-        filter = undefined; // filter messes us up if we actually have a last_sync.
+        if (filter == firstSyncFilter) {
+          filter = undefined; // filter messes us up if we actually have a last_sync.
+        }
+        if (argv.filter) {
+          filter = argv.filter; // We don't need status:incomplete here. You could almost say that we don't want it.
+        }
       }
     }
 
@@ -466,6 +478,25 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
         return true;
       });
     });
+
+    // In this one, we explicitly send a filter of undefined so we can check for deleted tasks
+    rtmapi.getTasks(undefined, undefined, lastSync, function(response) {
+      // TODO: I would update the lastSync here
+
+      // console.log(util.inspect(response.tasks));
+      response.tasks = moo(response.tasks);
+      var tasksAdded = 0;
+      response.tasks.every(function(item) {
+        if (item === undefined) { return true; }
+
+        item.list = moo(item.list);
+
+        item.list.every(function(list) {
+          if (list === undefined) { return true; }
+          // console.log('taskseries for ' + item.id + ': ' + util.inspect(item.taskseries));
+
+          // We're pretty much done here, so it's fine for this to be async. I
+          // think. It's probably going to say it's done too soon, but whatevs.
 
           if (list.deleted) {
             list.deleted = moo(list.deleted);

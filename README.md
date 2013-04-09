@@ -41,6 +41,7 @@ In development, you might do something like:
 
 Options:
 
+- `--filter`: Have tasks you don't want to import into HabitRPG? Use `--filter='Your criteria'`. For example, import only from a specific list or smart list with `--filter='list:"List Name"'`. Note the following: Even when you specify a filter, *any* task you delete in Remember the Milk will be deleted in HabitRPG if it exists. We have to ask RTM for changes without the filter to be able to do that at all.
 - `-q, --silence, --SILENCE`: Run silently, except for errors. Intended for use with `cron` so that it doesn't mail you every time (unless you want it to). For extra fun, use `habitsync --force --SILENCE`. Fun to type, but useless since **-q implies -f**.
 - `-f, --force`: Run non-interactively. Simply setting this (even `FORCE=`) is enough. *Try to avoid doing this. The prompts are in there for a good reason.*
 - `--beta`: Use `https://beta.habitrpg.com` instead of `https://habitrpg.com`. Note that `--dev` is stronger than this.
