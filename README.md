@@ -1,9 +1,6 @@
-**Version 1 is done! Development from here out will be driven by my experience using the tool and maybe yours? File issues!**
-
-Original idea: Read the plan at: https://trello.com/card/remember-the-milk/50e5d3684fe3a7266b0036d6/21.
-
 HabitRPG Todo Synchronization
 =============================
+*Like my stuff and want to see more of it? Pledge me a quarter on Gittip :) [https://www.gittip.com/wizonesolutions](https://www.gittip.com/wizonesolutions)*
 
 This is a quick-and-dirty tool (currently planned to be a command line-only tool) to get Remember the Milk tasks into HabitRPG and track updates to both each time it's run. It isn't intended to be feature-complete, useful for everyone, or robust. But it is intended to work.
 
@@ -69,3 +66,5 @@ Complaining about the license is fine. Since it's free, I figured it ought to st
 Legal
 =====
 Remember the Milk wants me to tell you that: "This product uses the Remember The Milk API but is not endorsed or certified by Remember The Milk." So take heed.
+
+Original idea: Read the plan at: https://trello.com/card/remember-the-milk/50e5d3684fe3a7266b0036d6/21.
