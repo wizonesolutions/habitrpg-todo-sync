@@ -6,9 +6,9 @@ This is a quick-and-dirty tool (currently planned to be a command line-only tool
 
 ### So what does it actually do?
 1. Grabs all your HabitRPG tasks for comparison purposes.
-1. Grabs all your Remember the Milk tasks (taking into account last time it synchronized and if you have passed `FULL_SYNC` or not).
+1. Grabs all your Remember the Milk tasks (taking into account last time it synchronized and if you have passed `--full-sync` or not).
 1. Now everything happens asynchronously:
-1. Adds new, incomplete tasks from Remember the Milk. The first time you sync, it only grabs the past week, and it only grabs incomplete tasks. Use `FULL_SYNC=1` in the environment variables to do a full synchronization.
+1. Adds new, incomplete tasks from Remember the Milk. The first time you sync, it only grabs the past week, and it only grabs incomplete tasks. Use `--full-sync` in the environment variables to do a full synchronization.
 1. Deletes any tasks that have been deleted on the Remember the Milk side, but it doesn't do the same for tasks only deleted on the HabitRPG side.
 1. Completes tasks on the Remember the Milk side if they have been completed since last synchronization on the HabitRPG side.
 
