@@ -15,7 +15,8 @@
     "superagent": "~0.13.0",
     "MD5": "~1.0.3",
     "moment": "~2.0.0",
-    "optimist": "~0.3.7"
+    "optimist": "~0.3.7",
+    "nconf": "~0.6.7"
   },
   "engines": {
     "node": "*"
