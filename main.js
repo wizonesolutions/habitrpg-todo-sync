@@ -37,6 +37,8 @@ var parser = new iniReader.IniReader(),
     .alias('q', 'quiet')
     .argv;
 
+var htsConfig = require('nconf'); // TODO: Get config from environment, then command line, then file. See also https://github.com/arscan/habitrpg-txt/blob/master/index.js#L6
+
 if (argv.debug) {
   argv.q = false;
 }
