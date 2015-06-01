@@ -488,7 +488,10 @@ function rtmContinue(habitapi, initialRtmApi, authToken) {
                 });
               } else {
                 if (!argv.q) {
-                  console.log('Dry run summary: Would add "' + taskseries.name + '". The API would tell us something like:' + "\n\n" +
+                  console.log('Dry run summary: Would add "' + taskseries.name + '"');
+                }
+                if (argv.debug) {
+                  console.log('The API would tell us something like:' + "\n\n" +
                     util.inspect({
                       type: "todo",
                       text: taskseries.name,
